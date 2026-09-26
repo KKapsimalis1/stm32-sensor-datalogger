@@ -1,0 +1,15 @@
+# Eclipse/CubeIDE metadata
+.metadata/
+.settings/
+*.launch
+
+# Build output
+Debug/
+Release/
+
+# CubeMX backup files
+*.ioc.bak
+
+# OS junk
+.DS_Store
+Thumbs.db
