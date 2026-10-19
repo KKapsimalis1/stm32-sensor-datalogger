@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * @file      startup_stm32f411xe.s
+  * @file      startup_stm32f401xe.s
   * @author    MCD Application Team
-  * @brief     STM32F411xExx Devices vector table for GCC based toolchains. 
+  * @brief     STM32F401xExx Devices vector table for GCC based toolchains. 
   *            This module performs:
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,
@@ -61,7 +61,7 @@ Reset_Handler:
   ldr   sp, =_estack    		 /* set stack pointer */
 
 /* Call the clock system initialization function.*/
-  bl  SystemInit   
+  bl  SystemInit  
 
 /* Copy the data segment initializers from flash to SRAM */  
   ldr r0, =_sdata
@@ -93,7 +93,7 @@ FillZerobss:
 LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
-
+ 
 /* Call static constructors */
     bl __libc_init_array
 /* Call the application's entry point.*/
@@ -226,8 +226,7 @@ g_pfnVectors:
   .word     FPU_IRQHandler                    /* FPU                          */
   .word     0                                 /* Reserved                     */                   
   .word     0                                 /* Reserved                     */
-  .word     SPI4_IRQHandler                   /* SPI4                         */
-  .word     SPI5_IRQHandler                   /* SPI5                         */  
+  .word     SPI4_IRQHandler                   /* SPI4                         */     
                     
 
   .size  g_pfnVectors, .-g_pfnVectors
@@ -432,7 +431,4 @@ g_pfnVectors:
    .thumb_set FPU_IRQHandler,Default_Handler  
 
    .weak      SPI4_IRQHandler                  
-   .thumb_set SPI4_IRQHandler,Default_Handler
-
-   .weak      SPI5_IRQHandler                  
-   .thumb_set SPI5_IRQHandler,Default_Handler    
+   .thumb_set SPI4_IRQHandler,Default_Handler 
