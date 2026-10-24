@@ -25,6 +25,7 @@ static void print_help(void) {
     printf("  status      - εμφανίζει tick count\r\n");
     printf("  bme         - διαβάζει raw τιμές από BME280\r\n");
     printf("  mpu         - διαβάζει raw accel/gyro από MPU6050\r\n");
+    printf("  scan        - ψάχνει συσκευές στο I2C bus\r\n");
 }
 
 void CommandMenu_Init(UART_HandleTypeDef *huart) {
@@ -78,6 +79,16 @@ static void handle_command(const char *cmd) {
         } else {
             printf("\r\nMPU6050 read error (code %d)", st);
         }
+    } else if (strcmp(cmd, "scan") == 0) {
+		extern I2C_HandleTypeDef hi2c1;
+		printf("\r\nI2C scan:");
+		for (uint8_t a = 0x08; a < 0x78; a++) {
+			if (HAL_I2C_IsDeviceReady(&hi2c1, a << 1, 1, 10) == HAL_OK) {
+				printf("\r\n  found 0x%02X", a);
+			}
+		}
+		printf("\r\nscan done");
+
     } else if (strlen(cmd) > 0) {
         printf("\r\nΆγνωστη εντολή: '%s' (γράψε 'help')", cmd);
     }
