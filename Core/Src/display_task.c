@@ -7,6 +7,8 @@
 
 static uint8_t  display_ready;
 static uint32_t last_update_ms;
+static uint8_t  message_active;
+static uint32_t message_until_ms;
 
 /* Writes a value given in 0.01 units with one decimal, e.g. -123 -> "-1.2". */
 static void write_deci(int32_t value_centi)
@@ -23,6 +25,25 @@ SSD1306_Status DisplayTask_Init(I2C_HandleTypeDef *hi2c)
     return st;
 }
 
+void DisplayTask_ShowMessage(const char *line1, const char *line2, uint32_t duration_ms)
+{
+    if (!display_ready) {
+        return;
+    }
+
+    SSD1306_Clear();
+    SSD1306_SetCursor(0, 24);
+    SSD1306_WriteString(line1);
+    if (line2 != NULL) {
+        SSD1306_SetCursor(0, 36);
+        SSD1306_WriteString(line2);
+    }
+    SSD1306_Update();
+
+    message_until_ms = HAL_GetTick() + duration_ms;
+    message_active = 1;
+}
+
 void DisplayTask_Process(void)
 {
     if (!display_ready) {
@@ -30,6 +51,15 @@ void DisplayTask_Process(void)
     }
 
     uint32_t now = HAL_GetTick();
+
+    if (message_active) {
+        if ((int32_t)(now - message_until_ms) < 0) {
+            return;  /* keep the message on screen */
+        }
+        message_active = 0;
+        last_update_ms = now - DISPLAY_PERIOD_MS;  /* redraw the measurements immediately */
+    }
+
     if ((now - last_update_ms) < DISPLAY_PERIOD_MS) {
         return;
     }

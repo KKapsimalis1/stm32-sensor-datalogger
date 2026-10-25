@@ -10,4 +10,10 @@ SSD1306_Status DisplayTask_Init(I2C_HandleTypeDef *hi2c);
 /* Call from the main loop. Refreshes the screen once per second, without blocking in between. */
 void DisplayTask_Process(void);
 
+/*
+ * Shows a short message (max 21 characters per line) for duration_ms, then returns to the
+ * normal measurement screen. line2 may be NULL.
+ */
+void DisplayTask_ShowMessage(const char *line1, const char *line2, uint32_t duration_ms);
+
 #endif /* INC_DISPLAY_TASK_H_ */

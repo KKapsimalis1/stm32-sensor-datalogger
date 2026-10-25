@@ -6,6 +6,7 @@
 # Build output
 Debug/
 Release/
+logs/
 
 # CubeMX backup files
 *.ioc.bak

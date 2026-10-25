@@ -5,6 +5,7 @@
 #include "bme280.h"
 #include "mpu6050.h"
 #include "stdlib.h"
+#include "data_logger.h"
 
 #define RX_BUF_SIZE 64
 
@@ -32,6 +33,11 @@ static void print_help(void) {
     printf("  env         - θερμοκρασία/πίεση/υγρασία σε φυσικές μονάδες\r\n");
     printf("  imu         - επιτάχυνση/γυροσκόπιο/θερμοκρασία σε φυσικές μονάδες\r\n");
     printf("  mpucal      - βαθμονόμηση γυροσκοπίου (κράτα το board ακίνητο)\r\n");
+    printf("  log start [ms] - ξεκινά την καταγραφή (default 1000 ms)\r\n");
+    printf("  log stop       - σταματά την καταγραφή\r\n");
+    printf("  log status     - κατάσταση της καταγραφής\r\n");
+    printf("  log dump       - εκτυπώνει τα δεδομένα (CSV)\r\n");
+    printf("  log clear      - σβήνει τα δεδομένα\r\n");
 }
 
 void CommandMenu_Init(UART_HandleTypeDef *huart) {
@@ -55,7 +61,36 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         HAL_UART_Receive_IT(menu_huart, &rx_byte, 1); // ξανά-άκουσε
     }
 }
+static void handle_log(const char *args)
+{
+    while (*args == ' ') {
+        args++;
+    }
 
+    if (strncmp(args, "start", 5) == 0) {
+        uint32_t period = (uint32_t)atoi(args + 5);  /* 0 if no number given */
+        if (period == 0) {
+            period = DATALOGGER_DEFAULT_MS;
+        }
+        DataLogger_Start(period);
+        printf("\r\nΚαταγραφή ξεκίνησε, περίοδος %lu ms", DataLogger_Period());
+    } else if (strcmp(args, "stop") == 0) {
+        DataLogger_Stop();
+        printf("\r\nΚαταγραφή σταμάτησε, %lu εγγραφές", DataLogger_Count());
+    } else if (strcmp(args, "clear") == 0) {
+        DataLogger_Clear();
+        printf("\r\nΤα δεδομένα σβήστηκαν");
+    } else if (strcmp(args, "dump") == 0) {
+        DataLogger_Dump();
+    } else if (strcmp(args, "status") == 0) {
+        printf("\r\nΚαταγραφή: %s, περίοδος %lu ms, εγγραφές %lu/%d, σφάλματα %lu",
+               DataLogger_IsRunning() ? "ενεργή" : "ανενεργή",
+               DataLogger_Period(), DataLogger_Count(),
+               DATALOGGER_CAPACITY, DataLogger_ErrorCount());
+    } else {
+        printf("\r\nΧρήση: log start [ms] | stop | status | dump | clear");
+    }
+}
 static void handle_command(const char *cmd) {
     if (strcmp(cmd, "help") == 0) {
         print_help();
@@ -124,6 +159,8 @@ static void handle_command(const char *cmd) {
         } else {
             printf("\r\nMPU6050 read error");
         }
+    } else if (strcmp(cmd, "log") == 0 || strncmp(cmd, "log ", 4) == 0) {
+        handle_log(cmd + 3);
     } else if (strlen(cmd) > 0) {
         printf("\r\nΆγνωστη εντολή: '%s' (γράψε 'help')", cmd);
     }
