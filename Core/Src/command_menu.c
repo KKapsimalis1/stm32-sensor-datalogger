@@ -4,6 +4,7 @@
 #include "main.h"
 #include "bme280.h"
 #include "mpu6050.h"
+#include "stdlib.h"
 
 #define RX_BUF_SIZE 64
 
@@ -16,7 +17,9 @@ static volatile uint8_t line_ready = 0;
 static void print_prompt(void) {
     printf("\r\n> ");
 }
-
+static void print_centi(int32_t v){
+    printf("%s%ld.%02ld", v < 0 ? "-" : "", labs(v) / 100, labs(v) % 100);
+}
 static void print_help(void) {
     printf("\r\nΔιαθέσιμες εντολές:\r\n");
     printf("  help        - εμφανίζει αυτό το menu\r\n");
@@ -26,6 +29,9 @@ static void print_help(void) {
     printf("  bme         - διαβάζει raw τιμές από BME280\r\n");
     printf("  mpu         - διαβάζει raw accel/gyro από MPU6050\r\n");
     printf("  scan        - ψάχνει συσκευές στο I2C bus\r\n");
+    printf("  env         - θερμοκρασία/πίεση/υγρασία σε φυσικές μονάδες\r\n");
+    printf("  imu         - επιτάχυνση/γυροσκόπιο/θερμοκρασία σε φυσικές μονάδες\r\n");
+    printf("  mpucal      - βαθμονόμηση γυροσκοπίου (κράτα το board ακίνητο)\r\n");
 }
 
 void CommandMenu_Init(UART_HandleTypeDef *huart) {
@@ -88,7 +94,36 @@ static void handle_command(const char *cmd) {
 			}
 		}
 		printf("\r\nscan done");
-
+    } else if (strcmp(cmd, "env") == 0) {
+        BME280_Data d;
+        if (BME280_Read(&d) == BME280_OK) {
+            int32_t t = d.temp_centi;
+            printf("\r\nT=%s%ld.%02ld C  P=%lu.%02lu hPa  H=%lu.%02lu %%RH",
+                   t < 0 ? "-" : "", labs(t) / 100, labs(t) % 100,
+                   d.press_pa / 100, d.press_pa % 100,
+                   d.hum_centi / 100, d.hum_centi % 100);
+        } else {
+            printf("\r\nBME280 read error");
+        }
+    } else if (strcmp(cmd, "imu") == 0) {
+        MPU6050_Data m;
+        if (MPU6050_Read(&m) == MPU6050_OK) {
+            printf("\r\nAccel [mg]:  x=%ld  y=%ld  z=%ld",
+                   m.accel_mg_x, m.accel_mg_y, m.accel_mg_z);
+            printf("\r\nGyro [dps]:  x="); print_centi(m.gyro_cdps_x);
+            printf("  y="); print_centi(m.gyro_cdps_y);
+            printf("  z="); print_centi(m.gyro_cdps_z);
+            printf("\r\nTemp [C]:    "); print_centi(m.temp_centi);
+        } else {
+            printf("\r\nMPU6050 read error");
+        }
+    } else if (strcmp(cmd, "mpucal") == 0) {
+        printf("\r\nΒαθμονόμηση... κράτα το board ακίνητο");
+        if (MPU6050_CalibrateGyro(200) == MPU6050_OK) {
+            printf("\r\nΤέλος βαθμονόμησης");
+        } else {
+            printf("\r\nMPU6050 read error");
+        }
     } else if (strlen(cmd) > 0) {
         printf("\r\nΆγνωστη εντολή: '%s' (γράψε 'help')", cmd);
     }

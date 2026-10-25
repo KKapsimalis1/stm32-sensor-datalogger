@@ -1,6 +1,6 @@
 # STM32 Sensor Data Logger
 
-Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τον αισθητήρα περιβάλλοντος BME280 και το IMU MPU6050 μέσω I2C και προσφέρει διαδραστικό command interface πάνω από UART. Γραμμένο σε C με το STM32 HAL, με κάθε περιφερειακό σε δικό του driver module.
+Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τον αισθητήρα περιβάλλοντος BME280 και το IMU MPU6050 μέσω I2C, εμφανίζει τις μετρήσεις σε οθόνη OLED SSD1306 και προσφέρει διαδραστικό command interface πάνω από UART. Γραμμένο σε C με το STM32 HAL, με κάθε περιφερειακό σε δικό του driver module.
 
 Είναι project εκμάθησης και portfolio που χτίζεται βήμα-βήμα. Η ενότητα "Τρέχουσα κατάσταση" δείχνει τι δουλεύει σήμερα και τι έχει μείνει.
 
@@ -11,7 +11,7 @@ Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τ
 | NUCLEO-F401RE (ARM Cortex-M4) | Κύριο board, ενσωματωμένος ST-LINK debugger και virtual COM port | |
 | BME280 (module HW-611) | Θερμοκρασία, υγρασία, πίεση | `0x76` |
 | MPU6050 | Επιταχυνσιόμετρο και γυροσκόπιο 3 αξόνων | `0x68` |
-| SSD1306 OLED | Τοπική οθόνη (ο driver δεν έχει γραφτεί ακόμα) | `0x3C` |
+| SSD1306 OLED 128x64 | Τοπική οθόνη μετρήσεων | `0x3C` |
 | Logic analyzer 8 καναλιών (Saleae-compatible, 24 MHz) | Debugging πρωτοκόλλων με PulseView/sigrok | |
 
 ## Καλωδίωση
@@ -33,26 +33,29 @@ Pins διευθύνσεων: BME280 `SDO` στο GND (0x76) και `CSB` στο 
 
 ```
 Core/
-  Inc/   main.h, command_menu.h, bme280.h, mpu6050.h
-  Src/   main.c, command_menu.c, bme280.c, mpu6050.c
+  Inc/   main.h, command_menu.h, bme280.h, mpu6050.h,
+         ssd1306.h, ssd1306_font.h, display_task.h
+  Src/   main.c, command_menu.c, bme280.c, mpu6050.c,
+         ssd1306.c, display_task.c
 Drivers/            (παράγονται αυτόματα: STM32 HAL και CMSIS)
 docs/               (screenshots και captures)
 *.ioc               (ρυθμίσεις STM32CubeMX)
 ```
+
+Κάθε αισθητήρας και η οθόνη έχουν δικό τους driver. Το `display_task` είναι ο "εφαρμογικός" κώδικας που διαβάζει τους αισθητήρες και ζωγραφίζει την οθόνη, χωρίς να μπλοκάρει το κύριο loop.
 
 ## Τρέχουσα κατάσταση
 
 - [x] Toolchain: STM32CubeMX 6.18.1 + STM32CubeIDE 2.2.0
 - [x] Bring-up του NUCLEO-F401RE (flash, debug, virtual COM port)
 - [x] UART command interface (RX με interrupts, `printf` προς USART2)
-- [x] Driver BME280: έλεγχος chip ID, burst ανάγνωση raw πίεσης, θερμοκρασίας και υγρασίας
-- [x] Driver MPU6050: wake-up, έλεγχος WHO_AM_I, burst ανάγνωση raw επιταχυνσιομέτρου και γυροσκοπίου
+- [x] Driver BME280: ανάγνωση calibration, compensation σε θερμοκρασία, πίεση και υγρασία
+- [x] Driver MPU6050: ρύθμιση ranges και φίλτρου, κλιμάκωση σε g και °/s, βαθμονόμηση offset γυροσκοπίου
 - [x] Εντολή scan του I2C bus
-- [x] Επαλήθευση της κίνησης στο I2C με logic analyzer (BME280 και MPU6050, δες παρακάτω)
-- [ ] Compensation BME280 (raw τιμές σε °C, hPa, %RH)
-- [ ] Κλιμάκωση MPU6050 (raw τιμές σε g και °/s)
-- [ ] Driver για την οθόνη SSD1306
-- [ ] Καταγραφή δεδομένων με timestamps (buffer)
+- [x] Επαλήθευση της κίνησης στο I2C με logic analyzer (BME280 και MPU6050)
+- [x] Driver SSD1306 (framebuffer, γραμματοσειρά 5x7, text rendering)
+- [x] Ζωντανή εμφάνιση μετρήσεων στην οθόνη, ανανέωση κάθε 1 δευτερόλεπτο
+- [ ] Καταγραφή δεδομένων με timestamps (buffer) και ανάγνωσή τους από το UART
 
 ## UART command interface (115200, 8N1)
 
@@ -62,8 +65,32 @@ docs/               (screenshots και captures)
 | `led on` / `led off` | Έλεγχος του LED LD2 |
 | `status` | Εμφανίζει το system tick (ms) |
 | `scan` | Σαρώνει το I2C bus και εμφανίζει τις διευθύνσεις που απαντούν |
-| `bme` | Εμφανίζει τις raw τιμές πίεσης, θερμοκρασίας και υγρασίας του BME280 |
-| `mpu` | Εμφανίζει τις raw τιμές επιταχυνσιομέτρου και γυροσκοπίου του MPU6050 |
+| `bme` | Raw τιμές πίεσης, θερμοκρασίας και υγρασίας του BME280 |
+| `env` | Θερμοκρασία (°C), πίεση (hPa) και υγρασία (%RH) |
+| `mpu` | Raw τιμές επιταχυνσιομέτρου και γυροσκοπίου του MPU6050 |
+| `imu` | Επιτάχυνση (mg), γωνιακή ταχύτητα (°/s) και θερμοκρασία chip |
+| `mpucal` | Βαθμονόμηση του γυροσκοπίου (το board πρέπει να είναι ακίνητο) |
+
+## Οθόνη SSD1306
+
+Η οθόνη ανανεώνεται μία φορά το δευτερόλεπτο και δείχνει τις μετρήσεις και των δύο αισθητήρων:
+
+![Μετρήσεις στην οθόνη SSD1306](docs/ssd1306_display.jpeg)
+
+Διάταξη (8 γραμμές κειμένου των 21 χαρακτήρων):
+
+```
+T: 21.05 C
+P: 1009.31 hPa
+H: 61.18 %RH
+-----------------
+Accel [mg]
+-41 -22 -1057
+Gyro [dps]
+-0.0 -0.0 -0.0
+```
+
+Ο driver κρατά ένα framebuffer 1024 bytes στη RAM. Οι συναρτήσεις σχεδίασης αλλάζουν μόνο το framebuffer, και η `SSD1306_Update()` το στέλνει στην οθόνη σελίδα-σελίδα μέσω I2C (περίπου 100 ms στα 100 kHz).
 
 ## Επαλήθευση του I2C με logic analyzer
 
@@ -105,5 +132,6 @@ docs/               (screenshots και captures)
 ## Σημειώσεις
 
 - Η πλακέτα HW-611 πουλιέται και ως BME280 και ως BMP280. Το BME280 έχει υγρασία, το BMP280 όχι. Ο driver ελέγχει το chip ID (`0x60` για BME280, `0x58` για BMP280) κατά την εκκίνηση.
-- Οι raw τιμές που τυπώνει η εντολή `bme` δεν είναι ακόμα φυσικές μονάδες. Χρειάζονται τους calibration coefficients κάθε chip και τους τύπους compensation από το datasheet της Bosch.
-- Οι raw τιμές της εντολής `mpu` χρειάζονται κλιμάκωση ανάλογα με το επιλεγμένο full-scale range, που δεν έχει ρυθμιστεί ακόμα (ισχύουν οι προεπιλογές του chip).
+- Όλες οι μετρήσεις υπολογίζονται και εμφανίζονται με ακέραιους (fixed point), χωρίς `float`. Με το newlib-nano που χρησιμοποιεί το CubeIDE, το `printf("%f")` δεν υποστηρίζεται χωρίς ειδική ρύθμιση του linker.
+- Ο MPU6050 είναι ρυθμισμένος στα ±2 g και ±250 °/s, με ρυθμό δειγματοληψίας 100 Hz και low-pass φίλτρο περίπου 44 Hz. Τα ranges αλλάζουν στο `MPU6050_Init()` μαζί με τις αντίστοιχες σταθερές κλιμάκωσης.
+- Η θερμοκρασία του MPU6050 είναι θερμοκρασία του chip και βγαίνει συνήθως μερικούς βαθμούς πάνω από τον αέρα. Η θερμοκρασία περιβάλλοντος παίρνεται από το BME280.

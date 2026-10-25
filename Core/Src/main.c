@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <ssd1306.h>
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -25,6 +26,7 @@
 #include "command_menu.h"
 #include "bme280.h"
 #include "mpu6050.h"
+#include "display_task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,6 +112,9 @@ int main(void)
     if (MPU6050_Init(&hi2c1) != MPU6050_OK) {
         printf("\r\n[WARNING] MPU6050 δεν βρέθηκε στο I2C bus");
     }
+    if (DisplayTask_Init(&hi2c1) != SSD1306_OK) {
+        printf("\r\n[WARNING] SSD1306 δεν βρέθηκε στο I2C bus");
+    }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -120,6 +125,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  CommandMenu_Process();
+	  DisplayTask_Process();
   }
   /* USER CODE END 3 */
 }
