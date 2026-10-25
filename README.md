@@ -1,8 +1,8 @@
 # STM32 Sensor Data Logger
 
-Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τον αισθητήρα περιβάλλοντος BME280 και το IMU MPU6050 μέσω I2C, εμφανίζει τις μετρήσεις σε οθόνη OLED SSD1306 και προσφέρει διαδραστικό command interface πάνω από UART. Γραμμένο σε C με το STM32 HAL, με κάθε περιφερειακό σε δικό του driver module.
+Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τον αισθητήρα περιβάλλοντος BME280 και το IMU MPU6050 μέσω I2C, εμφανίζει τις μετρήσεις σε οθόνη OLED SSD1306, καταγράφει τα δεδομένα σε buffer με timestamps και προσφέρει διαδραστικό command interface πάνω από UART. Ένα Python εργαλείο στον υπολογιστή κατεβάζει τις καταγραφές, τις αποθηκεύει σε CSV και φτιάχνει γραφήματα.
 
-Είναι project εκμάθησης και portfolio που χτίζεται βήμα-βήμα. Η ενότητα "Τρέχουσα κατάσταση" δείχνει τι δουλεύει σήμερα και τι έχει μείνει.
+Γραμμένο σε C με το STM32 HAL, με κάθε περιφερειακό σε δικό του driver module. Είναι project εκμάθησης και portfolio που χτίστηκε βήμα-βήμα.
 
 ## Hardware
 
@@ -27,35 +27,42 @@ Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τ
 
 Pins διευθύνσεων: BME280 `SDO` στο GND (0x76) και `CSB` στο 3V3 (λειτουργία I2C). MPU6050 `AD0` στο GND (0x68).
 
-Άλλα pins που χρησιμοποιούνται: `LD2` στο PA5 (user LED) και USART2 στα PA2/PA3 (ST-LINK virtual COM port, 115200 8N1).
+Άλλα pins που χρησιμοποιούνται: `LD2` στο PA5 (LED καταγραφής), `B1` στο PC13 (user button, interrupt) και USART2 στα PA2/PA3 (ST-LINK virtual COM port, 115200 8N1).
 
 ## Δομή του project
 
 ```
 Core/
-  Inc/   main.h, command_menu.h, bme280.h, mpu6050.h,
-         ssd1306.h, ssd1306_font.h, display_task.h
-  Src/   main.c, command_menu.c, bme280.c, mpu6050.c,
-         ssd1306.c, display_task.c
+  Inc/   main.h, command_menu.h, bme280.h, mpu6050.h, ssd1306.h, ssd1306_font.h,
+         display_task.h, data_logger.h, button.h, controls.h
+  Src/   main.c, command_menu.c, bme280.c, mpu6050.c, ssd1306.c,
+         display_task.c, data_logger.c, button.c, controls.c
 Drivers/            (παράγονται αυτόματα: STM32 HAL και CMSIS)
-docs/               (screenshots και captures)
+tools/              (log_tool.py, requirements.txt)
+docs/               (screenshots, captures, παράδειγμα γραφήματος)
 *.ioc               (ρυθμίσεις STM32CubeMX)
 ```
 
-Κάθε αισθητήρας και η οθόνη έχουν δικό τους driver. Το `display_task` είναι ο "εφαρμογικός" κώδικας που διαβάζει τους αισθητήρες και ζωγραφίζει την οθόνη, χωρίς να μπλοκάρει το κύριο loop.
+Αρχιτεκτονική σε επίπεδα:
+- **Drivers**: `bme280`, `mpu6050`, `ssd1306`, `button`. Μιλούν απευθείας με το hardware.
+- **Εφαρμογή**: `display_task` (ζωντανή οθόνη), `data_logger` (κυκλικός buffer), `controls` (ενέργειες του κουμπιού), `command_menu` (UART).
+- Το κύριο loop καλεί τις `*_Process()` συναρτήσεις η μία μετά την άλλη, χωρίς blocking delays, και τα interrupts (UART RX, κουμπί) δεν χάνουν γεγονότα όσο το loop είναι απασχολημένο.
 
 ## Τρέχουσα κατάσταση
 
 - [x] Toolchain: STM32CubeMX 6.18.1 + STM32CubeIDE 2.2.0
 - [x] Bring-up του NUCLEO-F401RE (flash, debug, virtual COM port)
 - [x] UART command interface (RX με interrupts, `printf` προς USART2)
-- [x] Driver BME280: ανάγνωση calibration, compensation σε θερμοκρασία, πίεση και υγρασία
+- [x] Driver BME280: calibration, compensation σε θερμοκρασία, πίεση και υγρασία
 - [x] Driver MPU6050: ρύθμιση ranges και φίλτρου, κλιμάκωση σε g και °/s, βαθμονόμηση offset γυροσκοπίου
 - [x] Εντολή scan του I2C bus
 - [x] Επαλήθευση της κίνησης στο I2C με logic analyzer (BME280 και MPU6050)
-- [x] Driver SSD1306 (framebuffer, γραμματοσειρά 5x7, text rendering)
-- [x] Ζωντανή εμφάνιση μετρήσεων στην οθόνη, ανανέωση κάθε 1 δευτερόλεπτο
-- [ ] Καταγραφή δεδομένων με timestamps (buffer) και ανάγνωσή τους από το UART
+- [x] Driver SSD1306 με γραμματοσειρά 5x7 και ζωντανή εμφάνιση μετρήσεων
+- [x] Data logger: κυκλικός buffer 1024 εγγραφών με timestamps και export σε CSV
+- [x] Κουμπί B1 με interrupt: σύντομο πάτημα για έναρξη/παύση καταγραφής, μακρύ πάτημα για βαθμονόμηση
+- [x] Python εργαλείο για λήψη, αποθήκευση σε CSV και γράφημα της καταγραφής
+
+Ιδέες για επέκταση: μόνιμη αποθήκευση (κάρτα SD ή flash), marker γεγονότων στο log, I2C στα 400 kHz, I2C με DMA/interrupts αντί για polling, χαμηλή κατανάλωση.
 
 ## UART command interface (115200, 8N1)
 
@@ -70,6 +77,58 @@ docs/               (screenshots και captures)
 | `mpu` | Raw τιμές επιταχυνσιομέτρου και γυροσκοπίου του MPU6050 |
 | `imu` | Επιτάχυνση (mg), γωνιακή ταχύτητα (°/s) και θερμοκρασία chip |
 | `mpucal` | Βαθμονόμηση του γυροσκοπίου (το board πρέπει να είναι ακίνητο) |
+| `log start [ms]` | Ξεκινά την καταγραφή (default 1000 ms) |
+| `log stop` | Σταματά την καταγραφή |
+| `log status` | Κατάσταση: ενεργή ή όχι, περίοδος, αριθμός εγγραφών, σφάλματα |
+| `log dump` | Εκτυπώνει τις εγγραφές ως CSV |
+| `log clear` | Σβήνει τον buffer |
+
+## Κουμπί B1
+
+| Πάτημα | Ενέργεια |
+|---|---|
+| Σύντομο | Αν δεν καταγράφει: καθαρίζει τον buffer και ξεκινά καταγραφή. Αν καταγράφει: τη σταματά. |
+| Μακρύ (1 s) | Βαθμονόμηση γυροσκοπίου, μόνο όταν δεν καταγράφει |
+
+Το LED LD2 είναι αναμμένο όσο τρέχει η καταγραφή και η οθόνη δείχνει σύντομα μηνύματα για κάθε ενέργεια. Το κουμπί διαβάζεται με EXTI interrupt στις δύο ακμές, με debounce 30 ms: το interrupt κρατά μόνο timestamps, και το κύριο loop αποφασίζει αν ήταν σύντομο ή μακρύ πάτημα.
+
+## Καταγραφή δεδομένων
+
+Ο data logger κρατά έως 1024 εγγραφές των 28 bytes (περίπου 28 KB RAM) σε κυκλικό buffer. Όταν γεμίσει, αντικαθίσταται η παλαιότερη εγγραφή. Τα δεδομένα μένουν στη RAM, άρα χάνονται σε reset.
+
+Μορφή του CSV που εκτυπώνει το `log dump`:
+
+| Στήλη | Μονάδα |
+|---|---|
+| `t_ms` | χρόνος από το boot (ms) |
+| `temp_c` | °C |
+| `press_hpa` | hPa |
+| `hum_pct` | %RH |
+| `ax_mg`, `ay_mg`, `az_mg` | mg |
+| `gx_dps`, `gy_dps`, `gz_dps` | °/s |
+
+Όλες οι μετρήσεις υπολογίζονται και αποθηκεύονται με ακέραιους (fixed point), χωρίς `float`. Με το newlib-nano που χρησιμοποιεί το CubeIDE, το `printf("%f")` δεν υποστηρίζεται χωρίς ειδική ρύθμιση του linker.
+
+## Python εργαλείο
+
+Το `tools/log_tool.py` τρέχει στον υπολογιστή και μιλάει με το board μέσω του COM port.
+
+```bash
+pip install -r tools/requirements.txt
+
+# Καταγραφή 60 δευτερολέπτων με δείγμα κάθε 500 ms, αποθήκευση σε CSV και γράφημα
+python tools/log_tool.py record --port COM3 --period 500 --duration 60
+
+# Λήψη όσων δεδομένων υπάρχουν ήδη στο board
+python tools/log_tool.py dump --port COM3
+
+# Γράφημα από υπάρχον CSV
+python tools/log_tool.py plot logs/log_20261101_120000.csv
+```
+
+Το CSV αποθηκεύεται αυτόματα στο `logs/log_<ημερομηνία_ώρα>.csv` και δίπλα του το γράφημα ως `.png`. Πρέπει να είναι κλειστό το PuTTY ή οποιοδήποτε άλλο πρόγραμμα χρησιμοποιεί το COM port.
+
+![Γράφημα καταγραφής](docs/log_plot.png)
 
 ## Οθόνη SSD1306
 
@@ -132,6 +191,7 @@ Gyro [dps]
 ## Σημειώσεις
 
 - Η πλακέτα HW-611 πουλιέται και ως BME280 και ως BMP280. Το BME280 έχει υγρασία, το BMP280 όχι. Ο driver ελέγχει το chip ID (`0x60` για BME280, `0x58` για BMP280) κατά την εκκίνηση.
-- Όλες οι μετρήσεις υπολογίζονται και εμφανίζονται με ακέραιους (fixed point), χωρίς `float`. Με το newlib-nano που χρησιμοποιεί το CubeIDE, το `printf("%f")` δεν υποστηρίζεται χωρίς ειδική ρύθμιση του linker.
 - Ο MPU6050 είναι ρυθμισμένος στα ±2 g και ±250 °/s, με ρυθμό δειγματοληψίας 100 Hz και low-pass φίλτρο περίπου 44 Hz. Τα ranges αλλάζουν στο `MPU6050_Init()` μαζί με τις αντίστοιχες σταθερές κλιμάκωσης.
 - Η θερμοκρασία του MPU6050 είναι θερμοκρασία του chip και βγαίνει συνήθως μερικούς βαθμούς πάνω από τον αέρα. Η θερμοκρασία περιβάλλοντος παίρνεται από το BME280.
+- Το `log dump` μπλοκάρει το loop όσο τυπώνει (μερικά δευτερόλεπτα για γεμάτο buffer), οπότε η καταγραφή και η οθόνη παγώνουν προσωρινά.
+- Κάθε ανανέωση της οθόνης διαρκεί περίπου 100 ms, οπότε σε πολύ μικρές περιόδους καταγραφής (κάτω από 100 ms) τα timestamps έχουν μικρή αστάθεια.
