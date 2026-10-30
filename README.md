@@ -1,5 +1,7 @@
 # STM32 Sensor Data Logger
 
+![CI](https://github.com/KKapsimalis1/stm32-sensor-datalogger/actions/workflows/ci.yml/badge.svg)
+
 Firmware for an STM32 Nucleo-64 board (NUCLEO-F401RE) that reads a BME280 environmental sensor and an MPU6050 IMU over I2C, shows the measurements on an SSD1306 OLED display, logs the data with timestamps to a buffer, and provides an interactive command interface over UART. A Python tool on the PC downloads the logs, saves them as CSV and plots them.
 
 Written in C using the STM32 HAL, with each peripheral in its own driver module. It is a learning and portfolio project built step by step.
