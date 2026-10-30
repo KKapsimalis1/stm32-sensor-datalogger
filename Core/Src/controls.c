@@ -30,7 +30,7 @@ static void process_button(void)
         if (DataLogger_IsRunning()) {
             char line[22];
             DataLogger_Stop();
-            snprintf(line, sizeof(line), "%lu records", DataLogger_Count());
+            snprintf(line, sizeof(line), "%lu records", (unsigned long)DataLogger_Count());
             DisplayTask_ShowMessage("Logging STOPPED", line, MESSAGE_MS);
         } else {
             DataLogger_Clear();

@@ -8,8 +8,6 @@
 #include "data_logger.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "FreeRTOS.h"
-#include "task.h"
 #include "app_config.h"
 #include "sensor_task.h"
 
@@ -86,10 +84,10 @@ static void handle_log(const char *args)
             period = DATALOGGER_DEFAULT_MS;
         }
         DataLogger_Start(period);
-        printf("\r\nΚαταγραφή ξεκίνησε, περίοδος %lu ms", DataLogger_Period());
+        printf("\r\nΚαταγραφή ξεκίνησε, περίοδος %lu ms", (unsigned long)DataLogger_Period());
     } else if (strcmp(args, "stop") == 0) {
         DataLogger_Stop();
-        printf("\r\nΚαταγραφή σταμάτησε, %lu εγγραφές", DataLogger_Count());
+        printf("\r\nΚαταγραφή σταμάτησε, %lu εγγραφές", (unsigned long)DataLogger_Count());
     } else if (strcmp(args, "clear") == 0) {
         DataLogger_Clear();
         printf("\r\nΤα δεδομένα σβήστηκαν");
@@ -98,9 +96,10 @@ static void handle_log(const char *args)
     } else if (strcmp(args, "status") == 0) {
     	printf("\r\nΚαταγραφή: %s, περίοδος %lu ms, εγγραφές %lu/%d, σφάλματα %lu, χαμένα δείγματα %lu",
     	       DataLogger_IsRunning() ? "ενεργή" : "ανενεργή",
-    	       DataLogger_Period(), DataLogger_Count(), DATALOGGER_CAPACITY,
-    	       DataLogger_ErrorCount(),
-    	       DataLogger_DroppedCount() + SensorTask_DroppedCount());
+    	       (unsigned long)DataLogger_Period(), (unsigned long)DataLogger_Count(),
+    	       (int)DATALOGGER_CAPACITY,
+    	       (unsigned long)DataLogger_ErrorCount(),
+    	       (unsigned long)(DataLogger_DroppedCount() + SensorTask_DroppedCount()));
     } else {
         printf("\r\nΧρήση: log start [ms] | stop | status | dump | clear");
     }
@@ -115,12 +114,13 @@ static void handle_command(const char *cmd) {
         HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
         printf("\r\nLED OFF");
     } else if (strcmp(cmd, "status") == 0) {
-        printf("\r\nTick: %lu ms", HAL_GetTick());
+        printf("\r\nTick: %lu ms", (unsigned long)HAL_GetTick());
     } else if (strcmp(cmd, "bme") == 0) {
     	int32_t raw_t, raw_p, raw_h;
     	BME280_Status st = BME280_ReadRaw(&raw_t, &raw_p, &raw_h);
     	if (st == BME280_OK) {
-          printf("\r\nraw_temp=%ld  raw_press=%ld  raw_hum=%ld", raw_t, raw_p, raw_h);
+          printf("\r\nraw_temp=%ld  raw_press=%ld  raw_hum=%ld",
+                 (long)raw_t, (long)raw_p, (long)raw_h);
     	} else {
     	  printf("\r\nBME280 read error (code %d) - ελεγξε συνδεση/address", st);
         }
@@ -149,8 +149,8 @@ static void handle_command(const char *cmd) {
             int32_t t = d.temp_centi;
             printf("\r\nT=%s%ld.%02ld C  P=%lu.%02lu hPa  H=%lu.%02lu %%RH",
                    t < 0 ? "-" : "", labs(t) / 100, labs(t) % 100,
-                   d.press_pa / 100, d.press_pa % 100,
-                   d.hum_centi / 100, d.hum_centi % 100);
+                   (unsigned long)(d.press_pa / 100), (unsigned long)(d.press_pa % 100),
+                   (unsigned long)(d.hum_centi / 100), (unsigned long)(d.hum_centi % 100));
         } else {
             printf("\r\nBME280 read error");
         }
@@ -158,7 +158,7 @@ static void handle_command(const char *cmd) {
         MPU6050_Data m;
         if (MPU6050_Read(&m) == MPU6050_OK) {
             printf("\r\nAccel [mg]:  x=%ld  y=%ld  z=%ld",
-                   m.accel_mg_x, m.accel_mg_y, m.accel_mg_z);
+                   (long)m.accel_mg_x, (long)m.accel_mg_y, (long)m.accel_mg_z);
             printf("\r\nGyro [dps]:  x="); print_centi(m.gyro_cdps_x);
             printf("  y="); print_centi(m.gyro_cdps_y);
             printf("  z="); print_centi(m.gyro_cdps_z);

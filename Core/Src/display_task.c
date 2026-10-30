@@ -44,9 +44,11 @@ static void draw_measurements(void)
         SSD1306_SetCursor(0, 0);
         SSD1306_Printf("T: %s%ld.%02ld C", t < 0 ? "-" : "", labs(t) / 100, labs(t) % 100);
         SSD1306_SetCursor(0, 8);
-        SSD1306_Printf("P: %lu.%02lu hPa", s.env.press_pa / 100, s.env.press_pa % 100);
+        SSD1306_Printf("P: %lu.%02lu hPa", (unsigned long)(s.env.press_pa / 100),
+                       (unsigned long)(s.env.press_pa % 100));
         SSD1306_SetCursor(0, 16);
-        SSD1306_Printf("H: %lu.%02lu %%RH", s.env.hum_centi / 100, s.env.hum_centi % 100);
+        SSD1306_Printf("H: %lu.%02lu %%RH", (unsigned long)(s.env.hum_centi / 100),
+                       (unsigned long)(s.env.hum_centi % 100));
     } else {
         SSD1306_SetCursor(0, 0);
         SSD1306_WriteString("BME280: read error");
@@ -62,7 +64,8 @@ static void draw_measurements(void)
         SSD1306_SetCursor(0, 32);
         SSD1306_WriteString("Accel [mg]");
         SSD1306_SetCursor(0, 40);
-        SSD1306_Printf("%ld %ld %ld", s.imu.accel_mg_x, s.imu.accel_mg_y, s.imu.accel_mg_z);
+        SSD1306_Printf("%ld %ld %ld", (long)s.imu.accel_mg_x, (long)s.imu.accel_mg_y,
+                       (long)s.imu.accel_mg_z);
 
         SSD1306_SetCursor(0, 48);
         SSD1306_WriteString("Gyro [dps]");

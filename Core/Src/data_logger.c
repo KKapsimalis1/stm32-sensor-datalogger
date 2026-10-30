@@ -147,12 +147,12 @@ void DataLogger_Dump(void)
     for (uint32_t i = 0; i < n; i++) {
         const LogRecord *r = &buffer[(start + i) % DATALOGGER_CAPACITY];
 
-        printf("%lu,", r->timestamp_ms);
+        printf("%lu,", (unsigned long)r->timestamp_ms);
         print_centi(r->temp_centi);
-        printf(",%lu.%02lu,%lu.%02lu,%d,%d,%d,",
-               r->press_pa / 100, r->press_pa % 100,
-               r->hum_centi / 100, r->hum_centi % 100,
-               r->accel_mg[0], r->accel_mg[1], r->accel_mg[2]);
+        printf(",%lu.%02lu,%lu.%02lu,%ld,%ld,%ld,",
+               (unsigned long)(r->press_pa / 100), (unsigned long)(r->press_pa % 100),
+               (unsigned long)(r->hum_centi / 100), (unsigned long)(r->hum_centi % 100),
+               (long)r->accel_mg[0], (long)r->accel_mg[1], (long)r->accel_mg[2]);
         print_centi(r->gyro_cdps[0]);
         printf(",");
         print_centi(r->gyro_cdps[1]);
@@ -160,7 +160,7 @@ void DataLogger_Dump(void)
         print_centi(r->gyro_cdps[2]);
         printf("\r\n");
     }
-    printf("-- %lu records --", n);
+    printf("-- %lu records --", (unsigned long)n);
 
     dumping = 0;
 }
