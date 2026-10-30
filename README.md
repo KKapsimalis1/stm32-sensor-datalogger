@@ -42,11 +42,13 @@ Pins διευθύνσεων: BME280 `SDO` στο GND (0x76) και `CSB` στο 
 ```
 Core/
   Inc/   main.h, command_menu.h, bme280.h, mpu6050.h, ssd1306.h, ssd1306_font.h,
-         display_task.h, data_logger.h, button.h, controls.h, sensor_task.h, i2c_bus.h, app_config.h
+         display_task.h, data_logger.h, button.h, controls.h, sensor_task.h, i2c_bus.h, app_config.h, sensor_math.h
   Src/   main.c, command_menu.c, bme280.c, mpu6050.c, ssd1306.c,
-         display_task.c, data_logger.c, button.c, controls.c, sensor_task.c, i2c_bus.c
+         display_task.c, data_logger.c, button.c, controls.c, sensor_task.c, i2c_bus.c, sensor_math.c
 Drivers/            (παράγονται αυτόματα: STM32 HAL και CMSIS)
 tools/              (log_tool.py, requirements.txt)
+test/               (unit tests με Unity, Makefile)
+.github/workflows/  (CI)
 docs/               (screenshots, captures, παράδειγμα γραφήματος)
 *.ioc               (ρυθμίσεις STM32CubeMX)
 ```
@@ -149,6 +151,22 @@ Jitter της περιόδου δειγματοληψίας, 50 ms, 40 s κατ�
 ### Τι έμαθα
 Η δημιουργία mutex και queues πριν ξεκινήσει ο scheduler αφήνει τα interrupts masked, και το `HAL_Delay` κολλάει (το είδα στο debugger στο `HAL_GetTick`). Λύση: δημιουργία των αντικειμένων μέσα σε ένα bootstrap task.
 
+## Unit tests και CI
+
+Η καθαρή μαθηματική λογική (compensation του BME280, parsing των καταχωρητών, κλιμάκωση του MPU6050) βρίσκεται στο `sensor_math.c`, που δεν εξαρτάται από HAL ή FreeRTOS. Έτσι μεταγλωττίζεται και στο firmware και στα tests που τρέχουν στον υπολογιστή.
+
+```
+make -C test
+```
+
+Τα tests (Unity, 17 περιπτώσεις) καλύπτουν:
+- Parsing των καταχωρητών calibration (συμπεριλαμβανομένου του H4/H5 που μοιράζονται καταχωρητή, και αρνητικών τιμών) και των raw δεδομένων.
+- Το παράδειγμα του datasheet της Bosch (BMP280: 25.08 °C, 100653 Pa, ίδιοι τύποι θερμοκρασίας και πίεσης).
+- Σύγκριση του ακέραιου υπολογισμού με την έκδοση κινητής υποδιαστολής του datasheet, σε ένα ρεαλιστικό εύρος τιμών (διαφορά το πολύ 0.01 °C, 1 Pa, 0.01 %RH).
+- Οριακές περιπτώσεις: P1 = 0 (διαίρεση με το μηδέν), περιορισμός υγρασίας στο 0 και 100 %, πλήρης κλίμακα accel και gyro, αρνητικές τιμές.
+
+Τα tests μεταγλωττίζονται με `-Wall -Wextra -Werror` και με AddressSanitizer και UBSan. Το GitHub Actions (`.github/workflows/ci.yml`) τρέχει τα tests και το cppcheck σε κάθε push και pull request.
+
 ## Τρέχουσα κατάσταση
 
 - [x] Toolchain: STM32CubeMX 6.18.1 + STM32CubeIDE 2.2.0
@@ -162,6 +180,7 @@ Jitter της περιόδου δειγματοληψίας, 50 ms, 40 s κατ�
 - [x] Data logger: κυκλικός buffer 1024 εγγραφών με timestamps και export σε CSV
 - [x] Κουμπί B1 με interrupt: σύντομο πάτημα για έναρξη/παύση καταγραφής, μακρύ πάτημα για βαθμονόμηση
 - [x] Python εργαλείο για λήψη, αποθήκευση σε CSV και γράφημα της καταγραφής
+- [x] Unit tests στον υπολογιστή (Unity), GitHub Actions και cppcheck
 - [x] Μεταφορά σε FreeRTOS: tasks, ουρές, mutex στο I2C, μέτρηση stack και jitter
 
 Ιδέες για επέκταση: μόνιμη αποθήκευση (κάρτα SD ή flash), marker γεγονότων στο log, I2C στα 400 kHz, I2C με DMA/interrupts αντί για polling, χαμηλή κατανάλωση.

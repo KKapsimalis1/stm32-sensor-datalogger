@@ -2,6 +2,7 @@
 #define INC_MPU6050_H_
 
 #include "main.h"
+#include "sensor_math.h"
 
 #define MPU6050_I2C_ADDR          (0x68 << 1)  /* AD0 low -> 0x68, AD0 high -> 0x69 */
 #define MPU6050_REG_SMPLRT_DIV    0x19
@@ -19,19 +20,9 @@ typedef enum {
     MPU6050_ERR_I2C
 } MPU6050_Status;
 
-/* Raw 16-bit register values, exactly as read from the sensor. */
-typedef struct {
-    int16_t accel_x, accel_y, accel_z;
-    int16_t temp_raw;
-    int16_t gyro_x, gyro_y, gyro_z;
-} MPU6050_RawData;
-
-/* Scaled measurements in fixed point (no floating point needed). */
-typedef struct {
-    int32_t accel_mg_x, accel_mg_y, accel_mg_z;     /* milli-g        (1000 = 1 g)      */
-    int32_t gyro_cdps_x, gyro_cdps_y, gyro_cdps_z;  /* 0.01 deg/s     (100 = 1 deg/s)   */
-    int32_t temp_centi;                             /* 0.01 degC, die temperature       */
-} MPU6050_Data;
+/* Raw register values and scaled measurements (see sensor_math.h for the units). */
+typedef Mpu6050Raw    MPU6050_RawData;
+typedef Mpu6050Scaled MPU6050_Data;
 
 MPU6050_Status MPU6050_Init(I2C_HandleTypeDef *hi2c);
 MPU6050_Status MPU6050_ReadRaw(MPU6050_RawData *data);

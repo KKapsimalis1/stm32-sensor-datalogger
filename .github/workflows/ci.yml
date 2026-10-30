@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Unit tests (PC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run the Unity tests
+        run: make -C test
+
+  static-analysis:
+    name: Static analysis (cppcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+      - name: Run cppcheck on the application code
+        run: |
+          cppcheck --version
+          cppcheck --enable=warning,performance,portability \
+                   --inline-suppr --error-exitcode=1 \
+                   --suppress=missingIncludeSystem --suppress=missingInclude \
+                   -I Core/Inc \
+                   Core/Src/sensor_math.c Core/Src/bme280.c Core/Src/mpu6050.c \
+                   Core/Src/ssd1306.c Core/Src/i2c_bus.c Core/Src/sensor_task.c \
+                   Core/Src/data_logger.c Core/Src/display_task.c \
+                   Core/Src/controls.c Core/Src/button.c Core/Src/command_menu.c
