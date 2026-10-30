@@ -55,7 +55,7 @@ docs/               (screenshots, captures, παράδειγμα γραφήμα�
 
 ```mermaid
 flowchart TB
-    MAIN["main loop<br/>calls the Process function of each module"]
+    MAIN["FreeRTOS scheduler<br/>five tasks"]
 
     subgraph APP["Application layer"]
         display["display_task<br/>live screen and messages"]
@@ -87,7 +87,7 @@ flowchart TB
 Αρχιτεκτονική σε επίπεδα:
 - **Drivers**: `bme280`, `mpu6050`, `ssd1306`, `button`. Μιλούν απευθείας με το hardware.
 - **Εφαρμογή**: `display_task` (ζωντανή οθόνη), `data_logger` (κυκλικός buffer), `controls` (ενέργειες του κουμπιού), `command_menu` (UART).
-- Το κύριο loop καλεί τις `*_Process()` συναρτήσεις η μία μετά την άλλη, χωρίς blocking delays, και τα interrupts (UART RX, κουμπί) δεν χάνουν γεγονότα όσο το loop είναι απασχολημένο.
+- Ο scheduler του FreeRTOS τρέχει πέντε tasks, και τα interrupts (UART RX, κουμπί) ξυπνούν τα tasks με task notifications (δες το κεφάλαιο «Έκδοση FreeRTOS»).
 
 ## Έκδοση FreeRTOS
 
@@ -108,10 +108,10 @@ flowchart TB
 
     EXTI -->|"notify"| CTRL
     RX -->|"notify"| CLI
-    SENS ==>|"sample queue"| LOG
-    SENS -.->|"latest sample"| DISP
-    CTRL ==>|"message queue"| DISP
-    CTRL -->|"start/stop"| LOG
+    SENS -->|"sample queue"| LOG
+    SENS -->|"latest sample"| DISP
+    CTRL -->|"message queue"| DISP
+    CTRL -->|"start and stop"| LOG
     CLI -->|"log cmds"| LOG
     SENS --> BUS
     DISP --> BUS
