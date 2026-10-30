@@ -1,43 +1,43 @@
 # STM32 Sensor Data Logger
 
-Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τον αισθητήρα περιβάλλοντος BME280 και το IMU MPU6050 μέσω I2C, εμφανίζει τις μετρήσεις σε οθόνη OLED SSD1306, καταγράφει τα δεδομένα σε buffer με timestamps και προσφέρει διαδραστικό command interface πάνω από UART. Ένα Python εργαλείο στον υπολογιστή κατεβάζει τις καταγραφές, τις αποθηκεύει σε CSV και φτιάχνει γραφήματα.
+Firmware for an STM32 Nucleo-64 board (NUCLEO-F401RE) that reads a BME280 environmental sensor and an MPU6050 IMU over I2C, shows the measurements on an SSD1306 OLED display, logs the data with timestamps to a buffer, and provides an interactive command interface over UART. A Python tool on the PC downloads the logs, saves them as CSV and plots them.
 
-Γραμμένο σε C με το STM32 HAL, με κάθε περιφερειακό σε δικό του driver module. Είναι project εκμάθησης και portfolio που χτίστηκε βήμα-βήμα.
+Written in C using the STM32 HAL, with each peripheral in its own driver module. It is a learning and portfolio project built step by step.
 
 ## Demo
 
-![Demo του project](docs/demo.gif)
+![Project demo](docs/demo.gif)
 
-Σύντομο πάτημα του κουμπιού B1 ξεκινά την καταγραφή (το LD2 ανάβει), οι μετρήσεις ανανεώνονται ζωντανά στην οθόνη, και στο τέλος τα δεδομένα κατεβαίνουν στον υπολογιστή ως CSV με γράφημα.
+A short press of the B1 button starts logging (LD2 turns on), the measurements update live on the display, and at the end the data is downloaded to the PC as a CSV with a plot.
 
 ## Hardware
 
-| Εξάρτημα | Ρόλος | Διεύθυνση I2C (7-bit) |
+| Component | Role | I2C address (7-bit) |
 |---|---|---|
-| NUCLEO-F401RE (ARM Cortex-M4) | Κύριο board, ενσωματωμένος ST-LINK debugger και virtual COM port | |
-| BME280 (module HW-611) | Θερμοκρασία, υγρασία, πίεση | `0x76` |
-| MPU6050 | Επιταχυνσιόμετρο και γυροσκόπιο 3 αξόνων | `0x68` |
-| SSD1306 OLED 128x64 | Τοπική οθόνη μετρήσεων | `0x3C` |
-| Logic analyzer 8 καναλιών (Saleae-compatible, 24 MHz) | Debugging πρωτοκόλλων με PulseView/sigrok | |
+| NUCLEO-F401RE (ARM Cortex-M4) | Main board, on-board ST-LINK debugger and virtual COM port | |
+| BME280 (HW-611 module) | Temperature, humidity, pressure | `0x76` |
+| MPU6050 | 3-axis accelerometer and gyroscope | `0x68` |
+| SSD1306 OLED 128x64 | Local measurement display | `0x3C` |
+| 8-channel logic analyzer (Saleae-compatible, 24 MHz) | Protocol debugging with PulseView/sigrok | |
 
-## Καλωδίωση
+## Wiring
 
-![Διάγραμμα καλωδίωσης](docs/wiring.svg)
+![Wiring diagram](docs/wiring.svg)
 
-Και τα τρία modules μοιράζονται το ίδιο I2C bus (I2C1, 100 kHz, με pull-ups πάνω στα modules).
+All three modules share the same I2C bus (I2C1, 100 kHz, with pull-ups on the modules).
 
-| Σήμα | Pin Nucleo | Πηγαίνει σε |
+| Signal | Nucleo pin | Goes to |
 |---|---|---|
-| SCL | PB8 (D15) | SCL όλων των modules |
-| SDA | PB9 (D14) | SDA όλων των modules |
-| 3V3 | 3.3V | VCC όλων των modules |
-| GND | GND | GND όλων των modules |
+| SCL | PB8 (D15) | SCL of all modules |
+| SDA | PB9 (D14) | SDA of all modules |
+| 3V3 | 3.3V | VCC of all modules |
+| GND | GND | GND of all modules |
 
-Pins διευθύνσεων: BME280 `SDO` στο GND (0x76) και `CSB` στο 3V3 (λειτουργία I2C). MPU6050 `AD0` στο GND (0x68).
+Address pins: BME280 `SDO` to GND (0x76) and `CSB` to 3V3 (I2C mode). MPU6050 `AD0` to GND (0x68).
 
-Άλλα pins που χρησιμοποιούνται: `LD2` στο PA5 (LED καταγραφής), `B1` στο PC13 (user button, interrupt) και USART2 στα PA2/PA3 (ST-LINK virtual COM port, 115200 8N1).
+Other pins used: `LD2` on PA5 (logging LED), `B1` on PC13 (user button, interrupt) and USART2 on PA2/PA3 (ST-LINK virtual COM port, 115200 8N1).
 
-## Δομή του project
+## Project structure
 
 ```
 Core/
@@ -45,15 +45,15 @@ Core/
          display_task.h, data_logger.h, button.h, controls.h, sensor_task.h, i2c_bus.h, app_config.h, sensor_math.h
   Src/   main.c, command_menu.c, bme280.c, mpu6050.c, ssd1306.c,
          display_task.c, data_logger.c, button.c, controls.c, sensor_task.c, i2c_bus.c, sensor_math.c
-Drivers/            (παράγονται αυτόματα: STM32 HAL και CMSIS)
+Drivers/            (auto-generated: STM32 HAL and CMSIS)
 tools/              (log_tool.py, requirements.txt)
-test/               (unit tests με Unity, Makefile)
+test/               (unit tests with Unity, Makefile)
 .github/workflows/  (CI)
-docs/               (screenshots, captures, παράδειγμα γραφήματος)
-*.ioc               (ρυθμίσεις STM32CubeMX)
+docs/               (screenshots, captures, example plot)
+*.ioc               (STM32CubeMX configuration)
 ```
 
-### Διάγραμμα αρχιτεκτονικής
+### Architecture diagram
 
 ```mermaid
 flowchart TB
@@ -86,14 +86,14 @@ flowchart TB
     DRV --> HW
 ```
 
-Αρχιτεκτονική σε επίπεδα:
-- **Drivers**: `bme280`, `mpu6050`, `ssd1306`, `button`. Μιλούν απευθείας με το hardware.
-- **Εφαρμογή**: `display_task` (ζωντανή οθόνη), `data_logger` (κυκλικός buffer), `controls` (ενέργειες του κουμπιού), `command_menu` (UART).
-- Ο scheduler του FreeRTOS τρέχει πέντε tasks, και τα interrupts (UART RX, κουμπί) ξυπνούν τα tasks με task notifications (δες το κεφάλαιο «Έκδοση FreeRTOS»).
+Layered architecture:
+- **Drivers**: `bme280`, `mpu6050`, `ssd1306`, `button`. They talk directly to the hardware.
+- **Application**: `display_task` (live display), `data_logger` (circular buffer), `controls` (button actions), `command_menu` (UART).
+- The FreeRTOS scheduler runs five tasks, and interrupts (UART RX, button) wake the tasks using task notifications (see the "FreeRTOS version" section).
 
-## Έκδοση FreeRTOS
+## FreeRTOS version
 
-Το super-loop αντικαταστάθηκε από tasks του FreeRTOS (CMSIS-RTOS v2, HAL timebase στο TIM11, heap 32 KB).
+The super-loop was replaced with FreeRTOS tasks (CMSIS-RTOS v2, HAL timebase on TIM11, 32 KB heap).
 
 ```mermaid
 flowchart TB
@@ -120,144 +120,144 @@ flowchart TB
     BUS --> HW
 ```
 
-| Task | Προτεραιότητα | Stack (words) | Ρόλος |
+| Task | Priority | Stack (words) | Role |
 |------|:---:|:---:|-------|
-| Sensors | 4 | 256 | Διαβάζει BME280 και MPU6050 με σταθερή περίοδο (deadline-based) |
-| Logger | 3 | 192 | Καταναλωτής της ουράς δειγμάτων, κυκλικός buffer 1024 εγγραφών |
-| Controls | 3 | 192 | Ξυπνά από το interrupt του B1, σύντομο/μακρύ πάτημα |
-| CLI | 2 | 256 | Επεξεργασία εντολών UART |
-| Display | 1 | 256 | Μοναδικός ιδιοκτήτης του framebuffer και της οθόνης |
+| Sensors | 4 | 256 | Reads the BME280 and MPU6050 at a fixed period (deadline-based) |
+| Logger | 3 | 192 | Consumes the sample queue, circular buffer of 1024 records |
+| Controls | 3 | 192 | Woken by the B1 interrupt, short/long press |
+| CLI | 2 | 256 | Processes UART commands |
+| Display | 1 | 256 | Sole owner of the framebuffer and the display |
 
-Σχεδιαστικές αποφάσεις:
-- **Task notifications από ISR** (`vTaskNotifyGiveFromISR`) για το κουμπί και το UART: χωρίς polling και χωρίς χαμένα γεγονότα.
-- **Ουρά δειγμάτων** (16 θέσεις) από το Sensors στο Logger, με μετρητή για δείγματα που χάνονται.
-- **Mutex στο I2C bus** (`i2c_bus.c`): τρία devices μοιράζονται το ίδιο bus από διαφορετικά tasks.
-- **Μία οθόνη, ένα task**: οι άλλοι στέλνουν μηνύματα μέσω ουράς, χωρίς blocking.
-- Οι προτεραιότητες των interrupts (USART2, EXTI) είναι χαμηλότερης επείγουσας από το όριο του FreeRTOS, ώστε να επιτρέπονται οι κλήσεις `...FromISR`.
+Design decisions:
+- **Task notifications from ISRs** (`vTaskNotifyGiveFromISR`) for the button and the UART: no polling and no missed events.
+- **Sample queue** (16 slots) from Sensors to Logger, with a counter for dropped samples.
+- **I2C bus mutex** (`i2c_bus.c`): three devices share the same bus from different tasks.
+- **One display, one task**: the other tasks send messages through a queue, without blocking.
+- The interrupt priorities (USART2, EXTI) are set less urgent than the FreeRTOS threshold, so that `...FromISR` calls are allowed.
 
-### Μετρήσεις
+### Measurements
 
-Jitter της περιόδου δειγματοληψίας, 50 ms, 40 s καταγραφή:
+Sampling period jitter, 50 ms period, 40 s recording:
 
 | | mean | std | min | max |
 |---|---:|---:|---:|---:|
 | Super-loop | 55.6 ms | 22.9 ms | 50 ms | 150 ms |
 | FreeRTOS | 50.0 ms | 0.0 ms | 50 ms | 50 ms |
 
-Στο super-loop, η ανανέωση της οθόνης (~100 ms μέσω I2C) καθυστερούσε τη δειγματοληψία. Στο FreeRTOS η οθόνη έχει χαμηλότερη προτεραιότητα και το Sensors την προεκτοπίζει.
+In the super-loop, the display refresh (~100 ms over I2C) delayed sampling. With FreeRTOS the display has a lower priority and the Sensors task preempts it.
 
-Χρήση stack (εντολή `rtos`, ελάχιστος ελεύθερος χώρος σε words): CLI 606, Sensors 248, Display 346, Controls 482, Logger 206, Tmr Svc 214, IDLE 95. Τα αρχικά μεγέθη (384/256/512/768/512) ήταν πολύ μεγάλα, και μειώθηκαν στον πίνακα παραπάνω κρατώντας ≥35% περιθώριο (λίγο παραπάνω για Logger και Controls).
+Stack usage (`rtos` command, minimum free space in words): CLI 606, Sensors 248, Display 346, Controls 482, Logger 206, Tmr Svc 214, IDLE 95. The initial sizes (384/256/512/768/512) were far too large and were reduced to the values in the table above, keeping ≥35% headroom (a little more for Logger and Controls).
 
-### Τι έμαθα
-Η δημιουργία mutex και queues πριν ξεκινήσει ο scheduler αφήνει τα interrupts masked, και το `HAL_Delay` κολλάει (το είδα στο debugger στο `HAL_GetTick`). Λύση: δημιουργία των αντικειμένων μέσα σε ένα bootstrap task.
+### What I learned
+Creating mutexes and queues before the scheduler starts leaves interrupts masked, and `HAL_Delay` hangs (I saw it stuck in `HAL_GetTick` in the debugger). Fix: create the objects inside a bootstrap task.
 
-## Unit tests και CI
+## Unit tests and CI
 
-Η καθαρή μαθηματική λογική (compensation του BME280, parsing των καταχωρητών, κλιμάκωση του MPU6050) βρίσκεται στο `sensor_math.c`, που δεν εξαρτάται από HAL ή FreeRTOS. Έτσι μεταγλωττίζεται και στο firmware και στα tests που τρέχουν στον υπολογιστή.
+The pure math logic (BME280 compensation, register parsing, MPU6050 scaling) lives in `sensor_math.c`, which does not depend on the HAL or FreeRTOS. This way it compiles both into the firmware and into the tests that run on the PC.
 
 ```
 make -C test
 ```
 
-Τα tests (Unity, 17 περιπτώσεις) καλύπτουν:
-- Parsing των καταχωρητών calibration (συμπεριλαμβανομένου του H4/H5 που μοιράζονται καταχωρητή, και αρνητικών τιμών) και των raw δεδομένων.
-- Το παράδειγμα του datasheet της Bosch (BMP280: 25.08 °C, 100653 Pa, ίδιοι τύποι θερμοκρασίας και πίεσης).
-- Σύγκριση του ακέραιου υπολογισμού με την έκδοση κινητής υποδιαστολής του datasheet, σε ένα ρεαλιστικό εύρος τιμών (διαφορά το πολύ 0.01 °C, 1 Pa, 0.01 %RH).
-- Οριακές περιπτώσεις: P1 = 0 (διαίρεση με το μηδέν), περιορισμός υγρασίας στο 0 και 100 %, πλήρης κλίμακα accel και gyro, αρνητικές τιμές.
+The tests (Unity, 17 cases) cover:
+- Parsing of the calibration registers (including H4/H5, which share a register, and negative values) and of the raw data.
+- The example from the Bosch datasheet (BMP280: 25.08 °C, 100653 Pa, same temperature and pressure formulas).
+- Comparison of the integer computation against the datasheet's floating-point version over a realistic range of values (difference at most 0.01 °C, 1 Pa, 0.01 %RH).
+- Edge cases: P1 = 0 (division by zero), humidity clamping at 0 and 100 %, full-scale accel and gyro, negative values.
 
-Τα tests μεταγλωττίζονται με `-Wall -Wextra -Werror` και με AddressSanitizer και UBSan. Το GitHub Actions (`.github/workflows/ci.yml`) τρέχει τα tests και το cppcheck σε κάθε push και pull request.
+The tests are compiled with `-Wall -Wextra -Werror` and with AddressSanitizer and UBSan. GitHub Actions (`.github/workflows/ci.yml`) runs the tests and cppcheck on every push and pull request.
 
-## Τρέχουσα κατάσταση
+## Current status
 
 - [x] Toolchain: STM32CubeMX 6.18.1 + STM32CubeIDE 2.2.0
-- [x] Bring-up του NUCLEO-F401RE (flash, debug, virtual COM port)
-- [x] UART command interface (RX με interrupts, `printf` προς USART2)
-- [x] Driver BME280: calibration, compensation σε θερμοκρασία, πίεση και υγρασία
-- [x] Driver MPU6050: ρύθμιση ranges και φίλτρου, κλιμάκωση σε g και °/s, βαθμονόμηση offset γυροσκοπίου
-- [x] Εντολή scan του I2C bus
-- [x] Επαλήθευση της κίνησης στο I2C με logic analyzer (BME280 και MPU6050)
-- [x] Driver SSD1306 με γραμματοσειρά 5x7 και ζωντανή εμφάνιση μετρήσεων
-- [x] Data logger: κυκλικός buffer 1024 εγγραφών με timestamps και export σε CSV
-- [x] Κουμπί B1 με interrupt: σύντομο πάτημα για έναρξη/παύση καταγραφής, μακρύ πάτημα για βαθμονόμηση
-- [x] Python εργαλείο για λήψη, αποθήκευση σε CSV και γράφημα της καταγραφής
-- [x] Unit tests στον υπολογιστή (Unity), GitHub Actions και cppcheck
-- [x] Μεταφορά σε FreeRTOS: tasks, ουρές, mutex στο I2C, μέτρηση stack και jitter
+- [x] NUCLEO-F401RE bring-up (flash, debug, virtual COM port)
+- [x] UART command interface (interrupt-driven RX, `printf` to USART2)
+- [x] BME280 driver: calibration, compensation to temperature, pressure and humidity
+- [x] MPU6050 driver: range and filter configuration, scaling to g and °/s, gyroscope offset calibration
+- [x] I2C bus scan command
+- [x] I2C traffic verified with a logic analyzer (BME280 and MPU6050)
+- [x] SSD1306 driver with a 5x7 font and live display of measurements
+- [x] Data logger: circular buffer of 1024 timestamped records with CSV export
+- [x] Interrupt-driven B1 button: short press to start/stop logging, long press for calibration
+- [x] Python tool to download, save as CSV and plot the log
+- [x] Unit tests on the PC (Unity), GitHub Actions and cppcheck
+- [x] Port to FreeRTOS: tasks, queues, I2C mutex, stack and jitter measurements
 
-Ιδέες για επέκταση: μόνιμη αποθήκευση (κάρτα SD ή flash), marker γεγονότων στο log, I2C στα 400 kHz, I2C με DMA/interrupts αντί για polling, χαμηλή κατανάλωση.
+Ideas for future work: persistent storage (SD card or flash), event markers in the log, I2C at 400 kHz, I2C with DMA/interrupts instead of polling, low power.
 
 ## UART command interface (115200, 8N1)
 
-| Εντολή | Περιγραφή |
+| Command | Description |
 |---|---|
-| `help` | Εμφανίζει τη λίστα εντολών |
-| `led on` / `led off` | Έλεγχος του LED LD2 |
-| `status` | Εμφανίζει το system tick (ms) |
-| `scan` | Σαρώνει το I2C bus και εμφανίζει τις διευθύνσεις που απαντούν |
-| `bme` | Raw τιμές πίεσης, θερμοκρασίας και υγρασίας του BME280 |
-| `env` | Θερμοκρασία (°C), πίεση (hPa) και υγρασία (%RH) |
-| `mpu` | Raw τιμές επιταχυνσιομέτρου και γυροσκοπίου του MPU6050 |
-| `imu` | Επιτάχυνση (mg), γωνιακή ταχύτητα (°/s) και θερμοκρασία chip |
-| `mpucal` | Βαθμονόμηση του γυροσκοπίου (το board πρέπει να είναι ακίνητο) |
-| `log start [ms]` | Ξεκινά την καταγραφή (default 1000 ms) |
-| `log stop` | Σταματά την καταγραφή |
-| `log status` | Κατάσταση: ενεργή ή όχι, περίοδος, αριθμός εγγραφών, σφάλματα |
-| `log dump` | Εκτυπώνει τις εγγραφές ως CSV |
-| `log clear` | Σβήνει τον buffer |
+| `help` | Shows the list of commands |
+| `led on` / `led off` | Controls the LD2 LED |
+| `status` | Shows the system tick (ms) |
+| `scan` | Scans the I2C bus and shows the addresses that respond |
+| `bme` | Raw BME280 pressure, temperature and humidity values |
+| `env` | Temperature (°C), pressure (hPa) and humidity (%RH) |
+| `mpu` | Raw MPU6050 accelerometer and gyroscope values |
+| `imu` | Acceleration (mg), angular rate (°/s) and chip temperature |
+| `mpucal` | Gyroscope calibration (the board must be stationary) |
+| `log start [ms]` | Starts logging (default 1000 ms) |
+| `log stop` | Stops logging |
+| `log status` | Status: running or not, period, number of records, errors |
+| `log dump` | Prints the records as CSV |
+| `log clear` | Clears the buffer |
 
-## Κουμπί B1
+## B1 button
 
-| Πάτημα | Ενέργεια |
+| Press | Action |
 |---|---|
-| Σύντομο | Αν δεν καταγράφει: καθαρίζει τον buffer και ξεκινά καταγραφή. Αν καταγράφει: τη σταματά. |
-| Μακρύ (1 s) | Βαθμονόμηση γυροσκοπίου, μόνο όταν δεν καταγράφει |
+| Short | If not logging: clears the buffer and starts logging. If logging: stops it. |
+| Long (1 s) | Gyroscope calibration, only when not logging |
 
-Το LED LD2 είναι αναμμένο όσο τρέχει η καταγραφή και η οθόνη δείχνει σύντομα μηνύματα για κάθε ενέργεια. Το κουμπί διαβάζεται με EXTI interrupt στις δύο ακμές, με debounce 30 ms: το interrupt κρατά μόνο timestamps, και το κύριο loop αποφασίζει αν ήταν σύντομο ή μακρύ πάτημα.
+The LD2 LED stays on while logging is running, and the display shows short messages for each action. The button is read with an EXTI interrupt on both edges, with a 30 ms debounce: the interrupt only records timestamps and wakes the Controls task, which decides whether it was a short or a long press. While the button is held, Controls also checks it every 50 ms, so a long press is reported after 1 s without waiting for the release.
 
-## Καταγραφή δεδομένων
+## Data logging
 
-Ο data logger κρατά έως 1024 εγγραφές των 28 bytes (περίπου 28 KB RAM) σε κυκλικό buffer. Όταν γεμίσει, αντικαθίσταται η παλαιότερη εγγραφή. Τα δεδομένα μένουν στη RAM, άρα χάνονται σε reset.
+The data logger keeps up to 1024 records of 28 bytes each (about 28 KB of RAM) in a circular buffer. When it is full, the oldest record is overwritten. The data stays in RAM, so it is lost on reset.
 
-Μορφή του CSV που εκτυπώνει το `log dump`:
+Format of the CSV printed by `log dump`:
 
-| Στήλη | Μονάδα |
+| Column | Unit |
 |---|---|
-| `t_ms` | χρόνος από το boot (ms) |
+| `t_ms` | time since boot (ms) |
 | `temp_c` | °C |
 | `press_hpa` | hPa |
 | `hum_pct` | %RH |
 | `ax_mg`, `ay_mg`, `az_mg` | mg |
 | `gx_dps`, `gy_dps`, `gz_dps` | °/s |
 
-Όλες οι μετρήσεις υπολογίζονται και αποθηκεύονται με ακέραιους (fixed point), χωρίς `float`. Με το newlib-nano που χρησιμοποιεί το CubeIDE, το `printf("%f")` δεν υποστηρίζεται χωρίς ειδική ρύθμιση του linker.
+All measurements are computed and stored as integers (fixed point), without `float`. With the newlib-nano used by CubeIDE, `printf("%f")` is not supported without a special linker setting.
 
-## Python εργαλείο
+## Python tool
 
-Το `tools/log_tool.py` τρέχει στον υπολογιστή και μιλάει με το board μέσω του COM port.
+`tools/log_tool.py` runs on the PC and talks to the board over the COM port.
 
 ```bash
 pip install -r tools/requirements.txt
 
-# Καταγραφή 60 δευτερολέπτων με δείγμα κάθε 500 ms, αποθήκευση σε CSV και γράφημα
+# Record for 60 seconds with a sample every 500 ms, save as CSV and plot
 python tools/log_tool.py record --port COM3 --period 500 --duration 60
 
-# Λήψη όσων δεδομένων υπάρχουν ήδη στο board
+# Download whatever data is already on the board
 python tools/log_tool.py dump --port COM3
 
-# Γράφημα από υπάρχον CSV
+# Plot an existing CSV
 python tools/log_tool.py plot logs/log_20261101_120000.csv
 ```
 
-Το CSV αποθηκεύεται αυτόματα στο `logs/log_<ημερομηνία_ώρα>.csv` και δίπλα του το γράφημα ως `.png`. Πρέπει να είναι κλειστό το PuTTY ή οποιοδήποτε άλλο πρόγραμμα χρησιμοποιεί το COM port.
+The CSV is saved automatically to `logs/log_<date_time>.csv`, with the plot next to it as a `.png`. PuTTY or any other program using the COM port must be closed.
 
-![Γράφημα καταγραφής](docs/log_plot.png)
+![Log plot](docs/log_plot.png)
 
-## Οθόνη SSD1306
+## SSD1306 display
 
-Η οθόνη ανανεώνεται μία φορά το δευτερόλεπτο και δείχνει τις μετρήσεις και των δύο αισθητήρων:
+The display refreshes once per second and shows the measurements from both sensors:
 
-![Μετρήσεις στην οθόνη SSD1306](docs/ssd1306_display.jpeg)
+![Measurements on the SSD1306 display](docs/ssd1306_display.jpeg)
 
-Διάταξη (8 γραμμές κειμένου των 21 χαρακτήρων):
+Layout (8 lines of 21 characters):
 
 ```
 T: 21.05 C
@@ -270,49 +270,49 @@ Gyro [dps]
 -0.0 -0.0 -0.0
 ```
 
-Ο driver κρατά ένα framebuffer 1024 bytes στη RAM. Οι συναρτήσεις σχεδίασης αλλάζουν μόνο το framebuffer, και η `SSD1306_Update()` το στέλνει στην οθόνη σελίδα-σελίδα μέσω I2C (περίπου 100 ms στα 100 kHz).
+The driver keeps a 1024-byte framebuffer in RAM. The drawing functions only modify the framebuffer, and `SSD1306_Update()` sends it to the display page by page over I2C (about 100 ms at 100 kHz).
 
-## Επαλήθευση του I2C με logic analyzer
+## I2C verification with a logic analyzer
 
-Οι αναγνώσεις καταγράφηκαν με logic analyzer συμβατό με Saleae και αποκωδικοποιήθηκαν στο PulseView (SCL στο D0, SDA στο D1, δειγματοληψία 2 MHz).
+The reads were captured with a Saleae-compatible logic analyzer and decoded in PulseView (SCL on D0, SDA on D1, 2 MHz sample rate).
 
 ### BME280
 
-![Ανάγνωση των data registers του BME280 μέσω I2C](docs/i2c_bme280_read.png)
+![Reading the BME280 data registers over I2C](docs/i2c_bme280_read.png)
 
-Η αποκωδικοποιημένη συναλλαγή ταιριάζει με το burst read της `BME280_ReadRaw()`:
+The decoded transaction matches the burst read in `BME280_ReadRaw()`:
 
-1. Start, μετά διεύθυνση `0x76` με write bit, και ο αισθητήρας απαντά με ACK
-2. Register pointer `0xF7` (αρχή των data registers)
-3. Repeated start, μετά διεύθυνση `0x76` με read bit
-4. Οκτώ bytes δεδομένων (πίεση 3, θερμοκρασία 3, υγρασία 2), καθένα με ACK
-5. NACK στο τελευταίο byte και μετά stop
+1. Start, then address `0x76` with the write bit, and the sensor responds with ACK
+2. Register pointer `0xF7` (start of the data registers)
+3. Repeated start, then address `0x76` with the read bit
+4. Eight data bytes (pressure 3, temperature 3, humidity 2), each with ACK
+5. NACK on the last byte, then stop
 
 ### MPU6050
 
-![Ανάγνωση των data registers του MPU6050 μέσω I2C](docs/i2c_mpu6050_read.png)
+![Reading the MPU6050 data registers over I2C](docs/i2c_mpu6050_read.png)
 
-Η συναλλαγή ταιριάζει με το burst read της `MPU6050_ReadRaw()`:
+The transaction matches the burst read in `MPU6050_ReadRaw()`:
 
-1. Start, μετά διεύθυνση `0x68` με write bit, και ο αισθητήρας απαντά με ACK
-2. Register pointer `0x3B` (`ACCEL_XOUT_H`, αρχή των data registers)
-3. Repeated start, μετά διεύθυνση `0x68` με read bit
-4. Δεκατέσσερα bytes δεδομένων (επιτάχυνση 6, θερμοκρασία 2, γυροσκόπιο 6), καθένα με ACK
-5. NACK στο τελευταίο byte και μετά stop
+1. Start, then address `0x68` with the write bit, and the sensor responds with ACK
+2. Register pointer `0x3B` (`ACCEL_XOUT_H`, start of the data registers)
+3. Repeated start, then address `0x68` with the read bit
+4. Fourteen data bytes (acceleration 6, temperature 2, gyroscope 6), each with ACK
+5. NACK on the last byte, then stop
 
-## Build και flash
+## Build and flash
 
-1. Άνοιξε το αρχείο `.ioc` στο STM32CubeMX και κάνε Generate Code με toolchain STM32CubeIDE.
-2. Άνοιξε το project στο STM32CubeIDE (File, Open Projects from File System).
-3. Κάνε Build και μετά Debug για να γίνει flash στο board μέσω του ενσωματωμένου ST-LINK.
-4. Άνοιξε serial terminal στο ST-LINK virtual COM port στα 115200 8N1 και πάτα το κουμπί RESET του board.
+1. Open the `.ioc` file in STM32CubeMX and run Generate Code with the STM32CubeIDE toolchain.
+2. Open the project in STM32CubeIDE (File, Open Projects from File System).
+3. Build, then Debug to flash the board through the on-board ST-LINK.
+4. Open a serial terminal on the ST-LINK virtual COM port at 115200 8N1 and press the board's RESET button.
 
-Σημείωση: από το STM32CubeIDE 2.0 και μετά, το STM32CubeMX είναι ξεχωριστή εφαρμογή. Οι αλλαγές σε pins και περιφερειακά γίνονται στο CubeMX και όχι μέσα στο IDE.
+Note: since STM32CubeIDE 2.0, STM32CubeMX is a separate application. Pin and peripheral changes are made in CubeMX, not inside the IDE.
 
-## Σημειώσεις
+## Notes
 
-- Η πλακέτα HW-611 πουλιέται και ως BME280 και ως BMP280. Το BME280 έχει υγρασία, το BMP280 όχι. Ο driver ελέγχει το chip ID (`0x60` για BME280, `0x58` για BMP280) κατά την εκκίνηση.
-- Ο MPU6050 είναι ρυθμισμένος στα ±2 g και ±250 °/s, με ρυθμό δειγματοληψίας 100 Hz και low-pass φίλτρο περίπου 44 Hz. Τα ranges αλλάζουν στο `MPU6050_Init()` μαζί με τις αντίστοιχες σταθερές κλιμάκωσης.
-- Η θερμοκρασία του MPU6050 είναι θερμοκρασία του chip και βγαίνει συνήθως μερικούς βαθμούς πάνω από τον αέρα. Η θερμοκρασία περιβάλλοντος παίρνεται από το BME280.
-- Το `log dump` μπλοκάρει το loop όσο τυπώνει (μερικά δευτερόλεπτα για γεμάτο buffer), οπότε η καταγραφή και η οθόνη παγώνουν προσωρινά.
-- Κάθε ανανέωση της οθόνης διαρκεί περίπου 100 ms, οπότε σε πολύ μικρές περιόδους καταγραφής (κάτω από 100 ms) τα timestamps έχουν μικρή αστάθεια.
+- The HW-611 board is sold as both BME280 and BMP280. The BME280 has humidity, the BMP280 does not. The driver checks the chip ID (`0x60` for BME280, `0x58` for BMP280) at startup.
+- The MPU6050 is configured for ±2 g and ±250 °/s, with a 100 Hz sample rate and a low-pass filter of about 44 Hz. The ranges are changed in `MPU6050_Init()` together with the corresponding scaling constants.
+- The MPU6050 temperature is the chip temperature and usually reads a few degrees above the air. Ambient temperature comes from the BME280.
+- During `log dump` the buffer is frozen so the CSV is consistent: samples taken while it prints (a few seconds for a full buffer) are not stored and are counted as dropped samples in `log status`. Sampling and the display keep running.
+- Each display refresh takes about 100 ms, but the display runs in the lowest-priority task, so it no longer affects sampling timing (see Measurements). The minimum logging period is 20 ms.

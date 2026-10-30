@@ -27,23 +27,23 @@ static void print_centi(int32_t v){
     printf("%s%ld.%02ld", v < 0 ? "-" : "", labs(v) / 100, labs(v) % 100);
 }
 static void print_help(void) {
-    printf("\r\nΔιαθέσιμες εντολές:\r\n");
-    printf("  help        - εμφανίζει αυτό το menu\r\n");
-    printf("  led on      - ανάβει το LD2\r\n");
-    printf("  led off     - σβήνει το LD2\r\n");
-    printf("  status      - εμφανίζει tick count\r\n");
-    printf("  bme         - διαβάζει raw τιμές από BME280\r\n");
-    printf("  mpu         - διαβάζει raw accel/gyro από MPU6050\r\n");
-    printf("  scan        - ψάχνει συσκευές στο I2C bus\r\n");
-    printf("  env         - θερμοκρασία/πίεση/υγρασία σε φυσικές μονάδες\r\n");
-    printf("  imu         - επιτάχυνση/γυροσκόπιο/θερμοκρασία σε φυσικές μονάδες\r\n");
-    printf("  mpucal      - βαθμονόμηση γυροσκοπίου (κράτα το board ακίνητο)\r\n");
-    printf("  log start [ms] - ξεκινά την καταγραφή (default 1000 ms)\r\n");
-    printf("  log stop       - σταματά την καταγραφή\r\n");
-    printf("  log status     - κατάσταση της καταγραφής\r\n");
-    printf("  log dump       - εκτυπώνει τα δεδομένα (CSV)\r\n");
-    printf("  log clear      - σβήνει τα δεδομένα\r\n");
-    printf("  rtos        - χρήση stack και heap του FreeRTOS\r\n");
+    printf("\r\nAvailable commands:\r\n");
+    printf("  help        - show this menu\r\n");
+    printf("  led on      - turn LD2 on\r\n");
+    printf("  led off     - turn LD2 off\r\n");
+    printf("  status      - show tick count\r\n");
+    printf("  bme         - read raw BME280 values\r\n");
+    printf("  mpu         - read raw MPU6050 accel/gyro\r\n");
+    printf("  scan        - scan the I2C bus for devices\r\n");
+    printf("  env         - temperature/pressure/humidity in physical units\r\n");
+    printf("  imu         - acceleration/gyro/temperature in physical units\r\n");
+    printf("  mpucal      - calibrate gyroscope (keep the board still)\r\n");
+    printf("  log start [ms] - start logging (default 1000 ms)\r\n");
+    printf("  log stop       - stop logging\r\n");
+    printf("  log status     - logging status\r\n");
+    printf("  log dump       - print the data (CSV)\r\n");
+    printf("  log clear      - clear the data\r\n");
+    printf("  rtos        - FreeRTOS stack and heap usage\r\n");
 }
 
 void CommandMenu_Init(UART_HandleTypeDef *huart) {
@@ -54,7 +54,7 @@ void CommandMenu_Init(UART_HandleTypeDef *huart) {
     HAL_UART_Receive_IT(menu_huart, &rx_byte, 1);
 }
 
-/* Καλείται αυτόματα από το HAL όταν έρθει byte */
+/* Called automatically by the HAL when a byte arrives */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == menu_huart->Instance) {
         if (rx_byte == '\r' || rx_byte == '\n') {
@@ -69,7 +69,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             line_buf[line_idx++] = rx_byte;
             HAL_UART_Transmit(menu_huart, &rx_byte, 1, 10); // echo
         }
-        HAL_UART_Receive_IT(menu_huart, &rx_byte, 1); // ξανά-άκουσε
+        HAL_UART_Receive_IT(menu_huart, &rx_byte, 1); // re-arm reception
     }
 }
 static void handle_log(const char *args)
@@ -84,24 +84,24 @@ static void handle_log(const char *args)
             period = DATALOGGER_DEFAULT_MS;
         }
         DataLogger_Start(period);
-        printf("\r\nΚαταγραφή ξεκίνησε, περίοδος %lu ms", (unsigned long)DataLogger_Period());
+        printf("\r\nLogging started, period %lu ms", (unsigned long)DataLogger_Period());
     } else if (strcmp(args, "stop") == 0) {
         DataLogger_Stop();
-        printf("\r\nΚαταγραφή σταμάτησε, %lu εγγραφές", (unsigned long)DataLogger_Count());
+        printf("\r\nLogging stopped, %lu records", (unsigned long)DataLogger_Count());
     } else if (strcmp(args, "clear") == 0) {
         DataLogger_Clear();
-        printf("\r\nΤα δεδομένα σβήστηκαν");
+        printf("\r\nData cleared");
     } else if (strcmp(args, "dump") == 0) {
         DataLogger_Dump();
     } else if (strcmp(args, "status") == 0) {
-    	printf("\r\nΚαταγραφή: %s, περίοδος %lu ms, εγγραφές %lu/%d, σφάλματα %lu, χαμένα δείγματα %lu",
-    	       DataLogger_IsRunning() ? "ενεργή" : "ανενεργή",
+    	printf("\r\nLogging: %s, period %lu ms, records %lu/%d, errors %lu, dropped samples %lu",
+    	       DataLogger_IsRunning() ? "running" : "stopped",
     	       (unsigned long)DataLogger_Period(), (unsigned long)DataLogger_Count(),
     	       (int)DATALOGGER_CAPACITY,
     	       (unsigned long)DataLogger_ErrorCount(),
     	       (unsigned long)(DataLogger_DroppedCount() + SensorTask_DroppedCount()));
     } else {
-        printf("\r\nΧρήση: log start [ms] | stop | status | dump | clear");
+        printf("\r\nUsage: log start [ms] | stop | status | dump | clear");
     }
 }
 static void handle_command(const char *cmd) {
@@ -122,7 +122,7 @@ static void handle_command(const char *cmd) {
           printf("\r\nraw_temp=%ld  raw_press=%ld  raw_hum=%ld",
                  (long)raw_t, (long)raw_p, (long)raw_h);
     	} else {
-    	  printf("\r\nBME280 read error (code %d) - ελεγξε συνδεση/address", st);
+    	  printf("\r\nBME280 read error (code %d) - check wiring/address", st);
         }
     } else if (strcmp(cmd, "mpu") == 0) {
         MPU6050_RawData d;
@@ -167,9 +167,9 @@ static void handle_command(const char *cmd) {
             printf("\r\nMPU6050 read error");
         }
     } else if (strcmp(cmd, "mpucal") == 0) {
-        printf("\r\nΒαθμονόμηση... κράτα το board ακίνητο");
+        printf("\r\nCalibrating... keep the board still");
         if (MPU6050_CalibrateGyro(200) == MPU6050_OK) {
-            printf("\r\nΤέλος βαθμονόμησης");
+            printf("\r\nCalibration done");
         } else {
             printf("\r\nMPU6050 read error");
         }
@@ -179,12 +179,12 @@ static void handle_command(const char *cmd) {
         static char list[400];
         vTaskList(list);
         printf("\r\nTask        State Prio Stack Num\r\n%s", list);
-        printf("Stack = ελάχιστος ελεύθερος χώρος (words)\r\n");
-        printf("Heap: ελεύθερος %lu bytes, ελάχιστος ποτέ %lu bytes",
+        printf("Stack = minimum free space (words)\r\n");
+        printf("Heap: free %lu bytes, minimum ever %lu bytes",
                (unsigned long)xPortGetFreeHeapSize(),
                (unsigned long)xPortGetMinimumEverFreeHeapSize());
     } else if (strlen(cmd) > 0) {
-        printf("\r\nΆγνωστη εντολή: '%s' (γράψε 'help')", cmd);
+        printf("\r\nUnknown command: '%s' (type 'help')", cmd);
     }
 }
 
@@ -200,7 +200,7 @@ static void cli_task_fn(void *argument)
 {
     (void)argument;
     for (;;) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* κοιμάται μέχρι να έρθει πλήρης γραμμή */
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* sleep until a full line arrives */
         CommandMenu_Process();
     }
 }

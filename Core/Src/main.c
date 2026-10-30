@@ -122,13 +122,13 @@ int main(void)
   DataLogger_Init();
   Controls_Init();
   if (BME280_Init(&hi2c1) != BME280_OK) {
-	printf("\r\n[WARNING] BME280 δεν βρέθηκε στο I2C bus");
+	printf("\r\n[WARNING] BME280 not found on the I2C bus");
   }
   if (MPU6050_Init(&hi2c1) != MPU6050_OK) {
-    printf("\r\n[WARNING] MPU6050 δεν βρέθηκε στο I2C bus");
+    printf("\r\n[WARNING] MPU6050 not found on the I2C bus");
   }
   if (DisplayTask_Init(&hi2c1) != SSD1306_OK) {
-	printf("\r\n[WARNING] SSD1306 δεν βρέθηκε στο I2C bus");
+	printf("\r\n[WARNING] SSD1306 not found on the I2C bus");
   }
   /* USER CODE END 2 */
 
@@ -356,7 +356,7 @@ void StartAppTask(void *argument)
   DisplayTask_Create();
   CommandMenu_Create();
   Controls_Create();
-  vTaskDelete(NULL);     /* ο bootstrap task δεν χρειάζεται πια */
+  vTaskDelete(NULL);     /* the bootstrap task is no longer needed */
   /* USER CODE END 5 */
 }
 
