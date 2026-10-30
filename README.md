@@ -42,9 +42,9 @@ Pins διευθύνσεων: BME280 `SDO` στο GND (0x76) και `CSB` στο 
 ```
 Core/
   Inc/   main.h, command_menu.h, bme280.h, mpu6050.h, ssd1306.h, ssd1306_font.h,
-         display_task.h, data_logger.h, button.h, controls.h
+         display_task.h, data_logger.h, button.h, controls.h, sensor_task.h, i2c_bus.h, app_config.h
   Src/   main.c, command_menu.c, bme280.c, mpu6050.c, ssd1306.c,
-         display_task.c, data_logger.c, button.c, controls.c
+         display_task.c, data_logger.c, button.c, controls.c, sensor_task.c, i2c_bus.c
 Drivers/            (παράγονται αυτόματα: STM32 HAL και CMSIS)
 tools/              (log_tool.py, requirements.txt)
 docs/               (screenshots, captures, παράδειγμα γραφήματος)
@@ -89,6 +89,66 @@ flowchart TB
 - **Εφαρμογή**: `display_task` (ζωντανή οθόνη), `data_logger` (κυκλικός buffer), `controls` (ενέργειες του κουμπιού), `command_menu` (UART).
 - Το κύριο loop καλεί τις `*_Process()` συναρτήσεις η μία μετά την άλλη, χωρίς blocking delays, και τα interrupts (UART RX, κουμπί) δεν χάνουν γεγονότα όσο το loop είναι απασχολημένο.
 
+## Έκδοση FreeRTOS
+
+Το super-loop αντικαταστάθηκε από tasks του FreeRTOS (CMSIS-RTOS v2, HAL timebase στο TIM11, heap 32 KB).
+
+```mermaid
+flowchart TB
+    EXTI["EXTI ISR<br/>button B1"]
+    RX["USART2 RX ISR"]
+
+    CTRL["Controls (prio 3)<br/>button actions, LED"]
+    CLI["CLI (prio 2)<br/>UART commands"]
+    SENS["Sensors (prio 4)<br/>fixed period"]
+    LOG["Logger (prio 3)<br/>circular buffer"]
+    DISP["Display (prio 1)<br/>owns the OLED"]
+    BUS["I2C bus mutex"]
+    HW["BME280, MPU6050, SSD1306"]
+
+    EXTI -->|"notify"| CTRL
+    RX -->|"notify"| CLI
+    SENS ==>|"sample queue"| LOG
+    SENS -.->|"latest sample"| DISP
+    CTRL ==>|"message queue"| DISP
+    CTRL -->|"start/stop"| LOG
+    CLI -->|"log cmds"| LOG
+    SENS --> BUS
+    DISP --> BUS
+    BUS --> HW
+```
+
+| Task | Προτεραιότητα | Stack (words) | Ρόλος |
+|------|:---:|:---:|-------|
+| Sensors | 4 | 256 | Διαβάζει BME280 και MPU6050 με σταθερή περίοδο (deadline-based) |
+| Logger | 3 | 192 | Καταναλωτής της ουράς δειγμάτων, κυκλικός buffer 1024 εγγραφών |
+| Controls | 3 | 192 | Ξυπνά από το interrupt του B1, σύντομο/μακρύ πάτημα |
+| CLI | 2 | 256 | Επεξεργασία εντολών UART |
+| Display | 1 | 256 | Μοναδικός ιδιοκτήτης του framebuffer και της οθόνης |
+
+Σχεδιαστικές αποφάσεις:
+- **Task notifications από ISR** (`vTaskNotifyGiveFromISR`) για το κουμπί και το UART: χωρίς polling και χωρίς χαμένα γεγονότα.
+- **Ουρά δειγμάτων** (16 θέσεις) από το Sensors στο Logger, με μετρητή για δείγματα που χάνονται.
+- **Mutex στο I2C bus** (`i2c_bus.c`): τρία devices μοιράζονται το ίδιο bus από διαφορετικά tasks.
+- **Μία οθόνη, ένα task**: οι άλλοι στέλνουν μηνύματα μέσω ουράς, χωρίς blocking.
+- Οι προτεραιότητες των interrupts (USART2, EXTI) είναι χαμηλότερης επείγουσας από το όριο του FreeRTOS, ώστε να επιτρέπονται οι κλήσεις `...FromISR`.
+
+### Μετρήσεις
+
+Jitter της περιόδου δειγματοληψίας, 50 ms, 40 s καταγραφή:
+
+| | mean | std | min | max |
+|---|---:|---:|---:|---:|
+| Super-loop | 55.6 ms | 22.9 ms | 50 ms | 150 ms |
+| FreeRTOS | 50.0 ms | 0.0 ms | 50 ms | 50 ms |
+
+Στο super-loop, η ανανέωση της οθόνης (~100 ms μέσω I2C) καθυστερούσε τη δειγματοληψία. Στο FreeRTOS η οθόνη έχει χαμηλότερη προτεραιότητα και το Sensors την προεκτοπίζει.
+
+Χρήση stack (εντολή `rtos`, ελάχιστος ελεύθερος χώρος σε words): CLI 606, Sensors 248, Display 346, Controls 482, Logger 206, Tmr Svc 214, IDLE 95. Τα αρχικά μεγέθη (384/256/512/768/512) ήταν πολύ μεγάλα, και μειώθηκαν στον πίνακα παραπάνω κρατώντας ≥35% περιθώριο (λίγο παραπάνω για Logger και Controls).
+
+### Τι έμαθα
+Η δημιουργία mutex και queues πριν ξεκινήσει ο scheduler αφήνει τα interrupts masked, και το `HAL_Delay` κολλάει (το είδα στο debugger στο `HAL_GetTick`). Λύση: δημιουργία των αντικειμένων μέσα σε ένα bootstrap task.
+
 ## Τρέχουσα κατάσταση
 
 - [x] Toolchain: STM32CubeMX 6.18.1 + STM32CubeIDE 2.2.0
@@ -102,6 +162,7 @@ flowchart TB
 - [x] Data logger: κυκλικός buffer 1024 εγγραφών με timestamps και export σε CSV
 - [x] Κουμπί B1 με interrupt: σύντομο πάτημα για έναρξη/παύση καταγραφής, μακρύ πάτημα για βαθμονόμηση
 - [x] Python εργαλείο για λήψη, αποθήκευση σε CSV και γράφημα της καταγραφής
+- [x] Μεταφορά σε FreeRTOS: tasks, ουρές, mutex στο I2C, μέτρηση stack και jitter
 
 Ιδέες για επέκταση: μόνιμη αποθήκευση (κάρτα SD ή flash), marker γεγονότων στο log, I2C στα 400 kHz, I2C με DMA/interrupts αντί για polling, χαμηλή κατανάλωση.
 

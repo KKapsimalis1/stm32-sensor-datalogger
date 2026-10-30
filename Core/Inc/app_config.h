@@ -14,11 +14,16 @@
 #define PRIO_CLI       2
 #define PRIO_DISPLAY   1
 
-/* Stack sizes in words. Generous at first, to be trimmed after measuring. */
-#define STACK_SENSORS  384
-#define STACK_LOGGER   256
-#define STACK_CONTROLS 512
-#define STACK_CLI      768
-#define STACK_DISPLAY  512
+/*
+ * Stack sizes in words, trimmed from the "rtos" measurements (peak use in words:
+ * Sensors 136, Logger 50, Controls 30, CLI 162, Display 166) with at least ~35% headroom.
+ * Logger and Controls get extra room because they can reach printf paths that a short
+ * test may not exercise.
+ */
+#define STACK_SENSORS  256
+#define STACK_LOGGER   192
+#define STACK_CONTROLS 192
+#define STACK_CLI      256
+#define STACK_DISPLAY  256
 
 #endif /* INC_APP_CONFIG_H_ */
