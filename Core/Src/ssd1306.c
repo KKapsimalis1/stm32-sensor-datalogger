@@ -1,5 +1,6 @@
-#include <ssd1306.h>
-#include <ssd1306_font.h>
+#include "ssd1306.h"
+#include "i2c_bus.h"
+#include "ssd1306_font.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,7 +17,7 @@ static uint8_t cursor_x, cursor_y;
 
 static HAL_StatusTypeDef oled_write_cmds(const uint8_t *cmds, uint16_t len)
 {
-    return HAL_I2C_Mem_Write(oled_hi2c, SSD1306_I2C_ADDR, SSD1306_CTRL_CMD,
+    return I2cBus_MemWrite(oled_hi2c, SSD1306_I2C_ADDR, SSD1306_CTRL_CMD,
                              I2C_MEMADD_SIZE_8BIT, (uint8_t *)cmds, len, 100);
 }
 
@@ -144,7 +145,7 @@ SSD1306_Status SSD1306_Update(void)
         if (oled_write_cmds(window, sizeof(window)) != HAL_OK) {
             return SSD1306_ERR_I2C;
         }
-        if (HAL_I2C_Mem_Write(oled_hi2c, SSD1306_I2C_ADDR, SSD1306_CTRL_DATA,
+        if (I2cBus_MemWrite(oled_hi2c, SSD1306_I2C_ADDR, SSD1306_CTRL_DATA,
                               I2C_MEMADD_SIZE_8BIT,
                               &framebuffer[page * SSD1306_WIDTH],
                               SSD1306_WIDTH, 100) != HAL_OK) {

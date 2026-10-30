@@ -102,6 +102,17 @@ def load_csv(path):
     return data
 
 
+def print_period_stats(t_ms):
+    """Print how regular the sampling period was (the jitter of the timestamps)."""
+    if len(t_ms) < 3:
+        return
+    dt = [b - a for a, b in zip(t_ms, t_ms[1:])]
+    mean = sum(dt) / len(dt)
+    std = (sum((x - mean) ** 2 for x in dt) / len(dt)) ** 0.5
+    print(f"Sampling period: mean {mean:.1f} ms, std {std:.1f} ms, "
+          f"min {min(dt):.0f} ms, max {max(dt):.0f} ms ({len(dt)} intervals)")
+
+
 def plot_csv(path, show=True):
     import matplotlib
     if not show:
@@ -111,6 +122,8 @@ def plot_csv(path, show=True):
     data = load_csv(path)
     if not data["t_ms"]:
         raise ValueError(f"{path} contains no data rows")
+
+    print_period_stats(data["t_ms"])
 
     t0 = data["t_ms"][0]
     t = [(x - t0) / 1000.0 for x in data["t_ms"]]
@@ -173,7 +186,9 @@ def finish(rows, args):
     out = Path(args.out) if args.out else default_csv_path()
     save_csv(rows, out)
     print(f"{len(rows)} records saved to {out}")
-    if not args.no_plot:
+    if args.no_plot:
+        print_period_stats([float(r[0]) for r in rows])
+    else:
         plot_csv(out, show=not args.no_show)
 
 

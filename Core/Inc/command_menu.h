@@ -5,5 +5,5 @@
 
 void CommandMenu_Init(UART_HandleTypeDef *huart);
 void CommandMenu_Process(void); // κλήση μέσα στο main loop
-
+void CommandMenu_Create(void);
 #endif

@@ -6,9 +6,16 @@
 #include "mpu6050.h"
 #include "stdlib.h"
 #include "data_logger.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "app_config.h"
+#include "sensor_task.h"
 
 #define RX_BUF_SIZE 64
 
+static TaskHandle_t cli_task;
 static UART_HandleTypeDef *menu_huart;
 static uint8_t rx_byte;
 static char line_buf[RX_BUF_SIZE];
@@ -38,6 +45,7 @@ static void print_help(void) {
     printf("  log status     - κατάσταση της καταγραφής\r\n");
     printf("  log dump       - εκτυπώνει τα δεδομένα (CSV)\r\n");
     printf("  log clear      - σβήνει τα δεδομένα\r\n");
+    printf("  rtos        - χρήση stack και heap του FreeRTOS\r\n");
 }
 
 void CommandMenu_Init(UART_HandleTypeDef *huart) {
@@ -54,6 +62,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         if (rx_byte == '\r' || rx_byte == '\n') {
             line_buf[line_idx] = '\0';
             line_ready = 1;
+            if (cli_task != NULL) {
+                BaseType_t woken = pdFALSE;
+                vTaskNotifyGiveFromISR(cli_task, &woken);
+                portYIELD_FROM_ISR(woken);
+            }
         } else if (line_idx < RX_BUF_SIZE - 1) {
             line_buf[line_idx++] = rx_byte;
             HAL_UART_Transmit(menu_huart, &rx_byte, 1, 10); // echo
@@ -83,10 +96,11 @@ static void handle_log(const char *args)
     } else if (strcmp(args, "dump") == 0) {
         DataLogger_Dump();
     } else if (strcmp(args, "status") == 0) {
-        printf("\r\nΚαταγραφή: %s, περίοδος %lu ms, εγγραφές %lu/%d, σφάλματα %lu",
-               DataLogger_IsRunning() ? "ενεργή" : "ανενεργή",
-               DataLogger_Period(), DataLogger_Count(),
-               DATALOGGER_CAPACITY, DataLogger_ErrorCount());
+    	printf("\r\nΚαταγραφή: %s, περίοδος %lu ms, εγγραφές %lu/%d, σφάλματα %lu, χαμένα δείγματα %lu",
+    	       DataLogger_IsRunning() ? "ενεργή" : "ανενεργή",
+    	       DataLogger_Period(), DataLogger_Count(), DATALOGGER_CAPACITY,
+    	       DataLogger_ErrorCount(),
+    	       DataLogger_DroppedCount() + SensorTask_DroppedCount());
     } else {
         printf("\r\nΧρήση: log start [ms] | stop | status | dump | clear");
     }
@@ -161,6 +175,14 @@ static void handle_command(const char *cmd) {
         }
     } else if (strcmp(cmd, "log") == 0 || strncmp(cmd, "log ", 4) == 0) {
         handle_log(cmd + 3);
+    } else if (strcmp(cmd, "rtos") == 0) {
+        static char list[400];
+        vTaskList(list);
+        printf("\r\nTask        State Prio Stack Num\r\n%s", list);
+        printf("Stack = ελάχιστος ελεύθερος χώρος (words)\r\n");
+        printf("Heap: ελεύθερος %lu bytes, ελάχιστος ποτέ %lu bytes",
+               (unsigned long)xPortGetFreeHeapSize(),
+               (unsigned long)xPortGetMinimumEverFreeHeapSize());
     } else if (strlen(cmd) > 0) {
         printf("\r\nΆγνωστη εντολή: '%s' (γράψε 'help')", cmd);
     }
@@ -173,4 +195,17 @@ void CommandMenu_Process(void) {
         line_ready = 0;
         print_prompt();
     }
+}
+static void cli_task_fn(void *argument)
+{
+    (void)argument;
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* κοιμάται μέχρι να έρθει πλήρης γραμμή */
+        CommandMenu_Process();
+    }
+}
+
+void CommandMenu_Create(void)
+{
+    xTaskCreate(cli_task_fn, "CLI", STACK_CLI, NULL, PRIO_CLI, &cli_task);
 }

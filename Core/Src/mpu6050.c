@@ -1,4 +1,7 @@
 #include "mpu6050.h"
+#include "i2c_bus.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 static I2C_HandleTypeDef *mpu_hi2c;
 
@@ -20,13 +23,13 @@ static int32_t gyro_off_x, gyro_off_y, gyro_off_z;
 
 static HAL_StatusTypeDef mpu_write_reg(uint8_t reg, uint8_t val)
 {
-    return HAL_I2C_Mem_Write(mpu_hi2c, MPU6050_I2C_ADDR, reg,
+    return I2cBus_MemWrite(mpu_hi2c, MPU6050_I2C_ADDR, reg,
                              I2C_MEMADD_SIZE_8BIT, &val, 1, 100);
 }
 
 static HAL_StatusTypeDef mpu_read_regs(uint8_t reg, uint8_t *buf, uint16_t len)
 {
-    return HAL_I2C_Mem_Read(mpu_hi2c, MPU6050_I2C_ADDR, reg,
+    return I2cBus_MemRead(mpu_hi2c, MPU6050_I2C_ADDR, reg,
                             I2C_MEMADD_SIZE_8BIT, buf, len, 100);
 }
 
@@ -115,7 +118,7 @@ MPU6050_Status MPU6050_CalibrateGyro(uint16_t samples)
         sx += r.gyro_x;
         sy += r.gyro_y;
         sz += r.gyro_z;
-        HAL_Delay(10);  /* new sample every 10 ms at 100 Hz */
+        vTaskDelay(pdMS_TO_TICKS(10));  /* new sample every 10 ms at 100 Hz; lets other tasks run */
     }
 
     gyro_off_x = sx / samples;

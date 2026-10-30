@@ -1,4 +1,5 @@
 #include "bme280.h"
+#include "i2c_bus.h"
 
 static I2C_HandleTypeDef *bme_hi2c;
 
@@ -16,13 +17,13 @@ static int32_t t_fine;
 
 static HAL_StatusTypeDef bme_write_reg(uint8_t reg, uint8_t val)
 {
-    return HAL_I2C_Mem_Write(bme_hi2c, BME280_I2C_ADDR, reg,
+    return I2cBus_MemWrite(bme_hi2c, BME280_I2C_ADDR, reg,
                              I2C_MEMADD_SIZE_8BIT, &val, 1, 100);
 }
 
 static HAL_StatusTypeDef bme_read_regs(uint8_t reg, uint8_t *buf, uint16_t len)
 {
-    return HAL_I2C_Mem_Read(bme_hi2c, BME280_I2C_ADDR, reg,
+    return I2cBus_MemRead(bme_hi2c, BME280_I2C_ADDR, reg,
                             I2C_MEMADD_SIZE_8BIT, buf, len, 100);
 }
 

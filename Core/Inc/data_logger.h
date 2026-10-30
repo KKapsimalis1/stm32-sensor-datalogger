@@ -17,20 +17,29 @@ typedef struct {
     int16_t  gyro_cdps[3];   /* 0.01 deg/s, x y z */
 } LogRecord;
 
+/*
+ * The logger is a consumer: the sensor task pushes samples into a queue, and the logger
+ * task stores them in a circular buffer while recording is active.
+ * DataLogger_Init() runs before the scheduler starts, DataLogger_Create() creates the task.
+ */
 void     DataLogger_Init(void);
+void     DataLogger_Create(void);
+
+/* Start/Stop/Clear/Dump may be called from any task. Start also sets the sensor period. */
 void     DataLogger_Start(uint32_t period_ms);
 void     DataLogger_Stop(void);
 void     DataLogger_Clear(void);
 
-/* Call from the main loop. Takes a sample when the period has elapsed. */
-void     DataLogger_Process(void);
-
-/* Prints all stored records, oldest first, as CSV over printf (UART). */
+/*
+ * Prints all stored records, oldest first, as CSV over printf (UART).
+ * New samples are not stored while the dump is running (they are counted as dropped).
+ */
 void     DataLogger_Dump(void);
 
 uint8_t  DataLogger_IsRunning(void);
 uint32_t DataLogger_Count(void);
 uint32_t DataLogger_Period(void);
-uint32_t DataLogger_ErrorCount(void);
+uint32_t DataLogger_ErrorCount(void);     /* samples discarded because a sensor read failed */
+uint32_t DataLogger_DroppedCount(void);   /* samples missed during a dump */
 
 #endif /* INC_DATA_LOGGER_H_ */

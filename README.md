@@ -4,6 +4,12 @@ Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τ
 
 Γραμμένο σε C με το STM32 HAL, με κάθε περιφερειακό σε δικό του driver module. Είναι project εκμάθησης και portfolio που χτίστηκε βήμα-βήμα.
 
+## Demo
+
+![Demo του project](docs/demo.gif)
+
+Σύντομο πάτημα του κουμπιού B1 ξεκινά την καταγραφή (το LD2 ανάβει), οι μετρήσεις ανανεώνονται ζωντανά στην οθόνη, και στο τέλος τα δεδομένα κατεβαίνουν στον υπολογιστή ως CSV με γράφημα.
+
 ## Hardware
 
 | Εξάρτημα | Ρόλος | Διεύθυνση I2C (7-bit) |
@@ -15,6 +21,8 @@ Firmware για board STM32 Nucleo-64 (NUCLEO-F401RE) που διαβάζει τ
 | Logic analyzer 8 καναλιών (Saleae-compatible, 24 MHz) | Debugging πρωτοκόλλων με PulseView/sigrok | |
 
 ## Καλωδίωση
+
+![Διάγραμμα καλωδίωσης](docs/wiring.svg)
 
 Και τα τρία modules μοιράζονται το ίδιο I2C bus (I2C1, 100 kHz, με pull-ups πάνω στα modules).
 
@@ -41,6 +49,39 @@ Drivers/            (παράγονται αυτόματα: STM32 HAL και CMS
 tools/              (log_tool.py, requirements.txt)
 docs/               (screenshots, captures, παράδειγμα γραφήματος)
 *.ioc               (ρυθμίσεις STM32CubeMX)
+```
+
+### Διάγραμμα αρχιτεκτονικής
+
+```mermaid
+flowchart TB
+    MAIN["main loop<br/>calls the Process function of each module"]
+
+    subgraph APP["Application layer"]
+        display["display_task<br/>live screen and messages"]
+        logger["data_logger<br/>circular buffer, CSV dump"]
+        controls["controls<br/>button actions, LED"]
+        menu["command_menu<br/>UART command line"]
+    end
+
+    subgraph DRV["Driver layer"]
+        dbme["bme280<br/>temperature, pressure, humidity"]
+        dmpu["mpu6050<br/>accelerometer, gyroscope"]
+        dssd["ssd1306<br/>framebuffer and font"]
+        dbtn["button<br/>EXTI interrupt, debounce"]
+    end
+
+    subgraph HW["Hardware"]
+        i2c["I2C1 bus<br/>BME280, MPU6050, SSD1306"]
+        gpio["B1 button, LD2 LED"]
+        uart["USART2 to ST-LINK<br/>virtual COM port"]
+        pc["PC<br/>PuTTY, tools/log_tool.py"]
+        uart <-->|"115200 baud"| pc
+    end
+
+    MAIN --> APP
+    APP --> DRV
+    DRV --> HW
 ```
 
 Αρχιτεκτονική σε επίπεδα:
