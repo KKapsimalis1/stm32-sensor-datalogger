@@ -8,6 +8,7 @@ CFLAGS += -fsanitize=address,undefined -fno-sanitize-recover=undefined
 endif
 
 BUILD = build
+TESTS = test_sensor_math test_watchdog_core
 
 all: run
 
@@ -15,8 +16,12 @@ $(BUILD)/test_sensor_math: test_sensor_math.c ../Core/Src/sensor_math.c unity/un
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^
 
-run: $(BUILD)/test_sensor_math
-	./$(BUILD)/test_sensor_math
+$(BUILD)/test_watchdog_core: test_watchdog_core.c ../Core/Src/watchdog_core.c unity/unity.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^
+
+run: $(addprefix $(BUILD)/,$(TESTS))
+	@set -e; for t in $(TESTS); do echo "== $$t"; ./$(BUILD)/$$t; done
 
 clean:
 	rm -rf $(BUILD)

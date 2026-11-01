@@ -6,6 +6,7 @@
 #include "semphr.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "watchdog.h"
 
 static LogRecord buffer[DATALOGGER_CAPACITY];
 static uint32_t  head;          /* index where the next record is written */
@@ -61,8 +62,12 @@ static void logger_task(void *argument)
 {
     (void)argument;
     SensorSample s;
-
+    Watchdog_Register(WDG_TASK_LOGGER, 3000);
     for (;;) {
+    	Watchdog_Checkin(WDG_TASK_LOGGER);
+		if (xQueueReceive(sample_queue, &s, pdMS_TO_TICKS(500)) != pdTRUE) {
+			continue;
+		}
         if (xQueueReceive(sample_queue, &s, portMAX_DELAY) != pdTRUE) {
             continue;
         }
@@ -146,6 +151,7 @@ void DataLogger_Dump(void)
 
     for (uint32_t i = 0; i < n; i++) {
         const LogRecord *r = &buffer[(start + i) % DATALOGGER_CAPACITY];
+        Watchdog_Checkin(WDG_TASK_CLI);
 
         printf("%lu,", (unsigned long)r->timestamp_ms);
         print_centi(r->temp_centi);

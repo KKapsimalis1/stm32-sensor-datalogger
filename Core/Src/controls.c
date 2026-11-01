@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <stdio.h>
+#include "watchdog.h"
 
 #define MESSAGE_MS  1500
 
@@ -68,6 +69,7 @@ static void process_button(void)
 static void controls_task(void *argument)
 {
     (void)argument;
+    Watchdog_Register(WDG_TASK_CONTROLS, 5000);
 
     for (;;) {
         /*
@@ -75,6 +77,7 @@ static void controls_task(void *argument)
          * button every 50 ms anyway, which is how a long press is detected while the button
          * is still held down (no edge arrives at that moment).
          */
+    	Watchdog_Checkin(WDG_TASK_CONTROLS);
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(50));
         process_button();
     }

@@ -27,7 +27,7 @@ jobs:
                    --inline-suppr --error-exitcode=1 \
                    --suppress=missingIncludeSystem --suppress=missingInclude \
                    -I Core/Inc \
-                   Core/Src/sensor_math.c Core/Src/bme280.c Core/Src/mpu6050.c \
+                   Core/Src/sensor_math.c Core/Src/watchdog_core.c Core/Src/watchdog.c Core/Src/bme280.c Core/Src/mpu6050.c \
                    Core/Src/ssd1306.c Core/Src/i2c_bus.c Core/Src/sensor_task.c \
                    Core/Src/data_logger.c Core/Src/display_task.c \
                    Core/Src/controls.c Core/Src/button.c Core/Src/command_menu.c

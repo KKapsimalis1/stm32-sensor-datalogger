@@ -5,6 +5,7 @@
 #include "queue.h"
 #include <stdlib.h>
 #include <string.h>
+#include "watchdog.h"
 
 #define DISPLAY_PERIOD_MS  1000
 #define MESSAGE_QUEUE_LEN  4
@@ -101,9 +102,11 @@ static void display_task(void *argument)
     TickType_t next_refresh  = xTaskGetTickCount();
     TickType_t message_until = 0;
     uint8_t    message_active = 0;
+    Watchdog_Register(WDG_TASK_DISPLAY, 5000);
 
     for (;;) {
         /* Sleep until the next event: a new message, the end of a message, or the next refresh. */
+    	Watchdog_Checkin(WDG_TASK_DISPLAY);
         TickType_t now = xTaskGetTickCount();
         int32_t remaining = message_active ? (int32_t)(message_until - now)
                                            : (int32_t)(next_refresh - now);

@@ -2,6 +2,7 @@
 #include "app_config.h"
 #include "task.h"
 #include <string.h>
+#include "watchdog.h"
 
 #define SENSOR_QUEUE_LEN  16
 
@@ -16,8 +17,11 @@ static void sensor_task(void *argument)
 {
     (void)argument;
     TickType_t next_wake = xTaskGetTickCount();
-
+    Watchdog_Register(WDG_TASK_SENSORS, 3000);
     for (;;) {
+    	/* The task is allowed to be silent for one period plus some slack. */
+    	Watchdog_SetLimit(WDG_TASK_SENSORS, period_ms + 2000);
+    	Watchdog_Checkin(WDG_TASK_SENSORS);
         SensorSample s;
         memset(&s, 0, sizeof(s));
         s.timestamp_ms = HAL_GetTick();

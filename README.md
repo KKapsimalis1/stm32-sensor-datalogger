@@ -167,6 +167,26 @@ The tests (Unity, 17 cases) cover:
 
 The tests are compiled with `-Wall -Wextra -Werror` and with AddressSanitizer and UBSan. GitHub Actions (`.github/workflows/ci.yml`) runs the tests and cppcheck on every push and pull request.
 
+## Reliability: watchdog and I2C bus recovery
+
+**Task watchdog.** The MCU's independent watchdog (IWDG, about 4 s nominal) is refreshed only by a low priority supervisor task, and only when every monitored task has checked in recently:
+
+| Task | Checks in | Allowed silence |
+|------|-----------|-----------------|
+| Sensors | every sampling period | period + 2 s |
+| Logger | at least every 500 ms (queue wait has a timeout) | 3 s |
+| Controls | every 50 ms | 5 s |
+| CLI | at least every 500 ms (also during a long `log dump`) | 5 s |
+| Display | every refresh | 5 s |
+
+If a task stalls, the supervisor stops refreshing the IWDG, prints the name of the stalled task and the MCU resets. After the reset the firmware prints which task caused it. If a higher priority task spins forever, the supervisor never runs, the IWDG resets the MCU on its own, and the report says the system was starved. The IWDG is frozen while the debugger halts the core.
+
+The bookkeeping (who checked in, who is overdue, wrap-around of the millisecond counter) is hardware independent and covered by unit tests on the PC.
+
+Two commands make the behaviour easy to demonstrate: `fault hang` stalls the CLI task, `fault spin` makes it spin in a busy loop, and `health` shows the last reset cause.
+
+**I2C bus recovery.** A slave that is reset in the middle of a transaction can hold SDA low forever and block the whole bus. When a transfer fails with a timeout, a busy bus or a bus/arbitration error, `i2c_bus.c` releases the I2C peripheral, clocks SCL up to nine times until the slave releases SDA, generates a STOP condition and initialises the peripheral again, all before releasing the bus mutex. A NACK (device not present) is treated as a normal error and does not trigger a recovery. The `health` command shows the error and recovery counters.
+
 ## Current status
 
 - [x] Toolchain: STM32CubeMX 6.18.1 + STM32CubeIDE 2.2.0
@@ -308,6 +328,14 @@ The transaction matches the burst read in `MPU6050_ReadRaw()`:
 4. Open a serial terminal on the ST-LINK virtual COM port at 115200 8N1 and press the board's RESET button.
 
 Note: since STM32CubeIDE 2.0, STM32CubeMX is a separate application. Pin and peripheral changes are made in CubeMX, not inside the IDE.
+ 
+## Future work
+
+- **Non-blocking I2C and UART:** replace the polling I2C transfers with DMA or interrupt driven ones, and receive UART bytes with DMA and the idle-line interrupt, so the echo no longer runs inside the interrupt handler.
+- **Sensor fusion:** a complementary filter that combines the accelerometer and gyroscope into pitch and roll.
+- **Persistent storage:** keep the gyro offsets (and optionally the log) in flash or on an SD card, so they survive a reset.
+- **Power:** measure the current in sleep mode and use the FreeRTOS tickless idle mode to reduce it.
+- **Build in CI:** compile the firmware in GitHub Actions with `arm-none-eabi-gcc`, next to the unit tests and cppcheck.
 
 ## Notes
 

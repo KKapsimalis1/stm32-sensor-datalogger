@@ -10,6 +10,8 @@
 #include "task.h"
 #include "app_config.h"
 #include "sensor_task.h"
+#include "watchdog.h"
+#include "i2c_bus.h"
 
 #define RX_BUF_SIZE 64
 
@@ -44,6 +46,9 @@ static void print_help(void) {
     printf("  log dump       - print the data (CSV)\r\n");
     printf("  log clear      - clear the data\r\n");
     printf("  rtos        - FreeRTOS stack and heap usage\r\n");
+    printf("  health      - last reset cause, I2C error and recovery counters\r\n");
+	printf("  fault hang  - test: stall the CLI task (watchdog names it and resets)\r\n");
+	printf("  fault spin  - test: busy loop (watchdog resets, no task report)\r\n");
 }
 
 void CommandMenu_Init(UART_HandleTypeDef *huart) {
@@ -183,6 +188,22 @@ static void handle_command(const char *cmd) {
         printf("Heap: free %lu bytes, minimum ever %lu bytes",
                (unsigned long)xPortGetFreeHeapSize(),
                (unsigned long)xPortGetMinimumEverFreeHeapSize());
+    } else if (strcmp(cmd, "health") == 0) {
+		printf("\r\nLast reset: %s", Watchdog_ResetCause());
+		printf("\r\nI2C errors: %lu, bus recoveries: %lu", (unsigned long)I2cBus_ErrorCount(), (unsigned long)I2cBus_RecoveryCount());
+#if ENABLE_FAULT_COMMANDS
+	} else if (strcmp(cmd, "fault hang") == 0) {
+		/* The task stays alive but never checks in: the watchdog names it, then resets. */
+		printf("\r\nStalling the CLI task on purpose...");
+		for (;;) {
+			vTaskDelay(pdMS_TO_TICKS(100));
+		}
+	} else if (strcmp(cmd, "fault spin") == 0) {
+		/* A busy loop starves the low priority supervisor: the IWDG resets the MCU alone. */
+		printf("\r\nSpinning the CLI task on purpose...");
+		for (;;) {
+		}
+#endif
     } else if (strlen(cmd) > 0) {
         printf("\r\nUnknown command: '%s' (type 'help')", cmd);
     }
@@ -199,8 +220,10 @@ void CommandMenu_Process(void) {
 static void cli_task_fn(void *argument)
 {
     (void)argument;
+    Watchdog_Register(WDG_TASK_CLI, 5000);
     for (;;) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* sleep until a full line arrives */
+    	Watchdog_Checkin(WDG_TASK_CLI);
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));   /* sleep until a full line arrives */
         CommandMenu_Process();
     }
 }
